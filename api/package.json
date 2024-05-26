@@ -1,0 +1,20 @@
+{
+  "scripts": {
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.11.1",
+    "@paralleldrive/cuid2": "^2.2.2",
+    "@types/pg": "^8.11.6",
+    "dotenv": "^16.4.5",
+    "hono": "^4.3.11",
+    "kysely": "^0.27.3",
+    "pg": "^8.11.5",
+    "prettier": "^3.2.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "tsx": "^4.7.1"
+  }
+}

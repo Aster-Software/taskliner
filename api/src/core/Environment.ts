@@ -1,0 +1,13 @@
+import { config } from 'dotenv'
+
+config();
+
+export const Environment = {
+    VITE_TASKLINER_DB_USER: process.env.VITE_TASKLINER_DB_USER,
+    VITE_TASKLINER_DB_PASSWORD: process.env.VITE_TASKLINER_DB_PASSWORD,
+    VITE_TASKLINER_DB_HOST: process.env.VITE_TASKLINER_DB_HOST,
+    VITE_TASKLINER_DB_PORT: Number(process.env.VITE_TASKLINER_DB_PORT),
+    VITE_TASKLINER_DB_DATABASE: process.env.VITE_TASKLINER_DB_DATABASE,
+    VITE_TASKLINER_DB_CERT: process.env.VITE_TASKLINER_DB_CERT
+
+}
