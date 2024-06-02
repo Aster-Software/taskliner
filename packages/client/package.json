@@ -1,0 +1,27 @@
+{
+  "name": "client",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.7.0",
+    "@astrojs/node": "^8.2.5",
+    "@astrojs/solid-js": "^4.2.0",
+    "@kobalte/core": "^0.13.1",
+    "@supabase/supabase-js": "^2.43.4",
+    "astro": "^4.9.1",
+    "eslint": "^9.3.0",
+    "json-stringify-deterministic": "^1.0.12",
+    "mobx": "^6.12.3",
+    "solid-js": "^1.8.17",
+    "typescript": "^5.4.5",
+    "zod": "^3.23.8"
+  },
+  "packageManager": "pnpm@9.1.2+sha1.907f57a52517de34399d66401bf220a549e47b57"
+}

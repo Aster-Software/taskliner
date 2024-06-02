@@ -1,0 +1,25 @@
+---
+import Layout from "../astro/layouts/Layout.astro";
+import Card from "../astro/components/Card.astro";
+
+import { Test } from "../solid/primary/Test";
+import { WorkspaceSelector } from "../solid/primary/WorkspaceSelector";
+import { WorkspacePage } from "../solid/primary/WorkspacePage/WorkspacePage";
+import { Test2 } from "../solid/primary/Test/Test";
+
+console.log("Hello Server");
+---
+
+<Layout title="Workspaces">
+  <main>
+    <Test2 client:only="solid-js" />
+    <!-- <Test client:only="solid-js" /> -->
+    <!-- <WorkspacePage client:only="solid-js" /> -->
+  </main>
+</Layout>
+
+<style>
+  main {
+    padding: 30px;
+  }
+</style>
