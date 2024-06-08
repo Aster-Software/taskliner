@@ -1,8 +1,8 @@
-import { styled } from "@style/jsx";
-import { ComponentSystem } from "./_ComponentStyleSystem";
+import { styled } from "./_StyledComponent";
+import { recipes } from "./_VanillaExtract.css";
+// import { mergeRecipes } from "./_VanillaExtractRecipes.css";
 
-export const Button = styled("button", {
-  base: ComponentSystem.Base.input,
-  variants: { variant: ComponentSystem.ControlVariants },
-  defaultVariants: {},
-});
+export const Button = styled(
+  "button",
+  // mergeRecipes(recipes.button, recipes.hoverable),
+);

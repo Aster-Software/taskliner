@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import solid from "@astrojs/solid-js";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +16,7 @@ export default defineConfig({
     mode: "standalone",
   }),
   vite: {
-    plugins: [tsconfigPaths({ root: "./" })],
+    plugins: [tsconfigPaths({ root: "./" }), vanillaExtractPlugin()],
     server: {
       proxy: {
         "/api": {

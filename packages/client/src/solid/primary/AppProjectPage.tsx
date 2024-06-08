@@ -3,12 +3,22 @@ import type { Id } from "../../../../api/convex/_generated/dataModel";
 import { createQuery } from "../utilities/ConvexUtils";
 import { api } from "../../../../api/convex/_generated/api";
 import { Match, Switch, type JSXElement } from "solid-js";
-import { Center, Container, Grid, VStack, styled } from "@style/jsx";
+import { Center, Container, Grid, VStack } from "@style/jsx";
 import { DatePicker } from "../components/DatePicker";
-import { mergeRecipes, recipes } from "../components/_ComponentStyleSystem";
+import { recipes } from "../components/_ComponentStyleSystem";
 import { TextInput } from "../components/TextInput";
 import { Button } from "../components/Button";
-import merge from "merge";
+import {
+  button,
+  hoverable,
+  panel,
+  test,
+} from "../components/_VanillaExtract.css";
+import { styled } from "../components/_StyledComponent";
+import { PandaTest } from "../components/_PantaTest";
+
+const T1 = styled("div");
+const T2 = styled("div", panel);
 
 export const AppProjectPage = () => {
   const params = useParams();
@@ -48,7 +58,23 @@ export const AppProjectPage = () => {
                 <TextInput placeholder="Write Stuff..." />
               </Grid>
 
-              <TestMergedRecipe variant="solid">Test</TestMergedRecipe>
+              <div class={button({ variant: "solid" })}>SOLID</div>
+              <div class={button({ variant: "filled" })}>FILLED</div>
+              <div class={panel({ variant: "solid" })}>PANEL SOLID</div>
+              <div class={panel({ variant: "filled" })}>PANEL FILLED</div>
+              <div class={test({ variant: "solid" })}>TEST SOLID</div>
+              <div class={test({ variant: "filled" })}>TEST FILLED</div>
+
+              <T1 style={{ padding: "30px", color: "blue" }}>Test Div</T1>
+              <T2
+                variant="solid"
+                style={{ color: "blue", "font-weight": "700" }}
+              >
+                Test Div
+              </T2>
+              <T2 variant="filled">Test Div</T2>
+
+              <PandaTest />
             </div>
           </Grid>
         </Container>
@@ -82,51 +108,3 @@ const LoadingStateHandler = <T extends any>(props: {
     </Switch>
   );
 };
-
-const TestMergedRecipe = styled(
-  "div",
-  mergeRecipes(recipes.input, recipes.panel, recipes.test),
-);
-
-const t1 = {
-  test: "Hello World",
-  x: {
-    a: "Test",
-  },
-};
-
-const t2 = {
-  a: "Hey",
-  x: {
-    b: "Test",
-  },
-};
-
-const x = merge(t1, t2);
-
-type OptionalPropertyNames<T> = {
-  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? K : never;
-}[keyof T];
-
-type SpreadProperties<L, R, K extends keyof L & keyof R> = {
-  [P in K]: L[P] | Exclude<R[P], undefined>;
-};
-
-type Id<T> = T extends infer U ? { [K in keyof U]: U[K] } : never;
-
-type SpreadTwo<L, R> = Id<
-  Pick<L, Exclude<keyof L, keyof R>> &
-    Pick<R, Exclude<keyof R, OptionalPropertyNames<R>>> &
-    Pick<R, Exclude<OptionalPropertyNames<R>, keyof L>> &
-    SpreadProperties<L, R, OptionalPropertyNames<R> & keyof L>
->;
-
-type Spread<A extends readonly [...any]> = A extends [infer L, ...infer R]
-  ? SpreadTwo<L, Spread<R>>
-  : unknown;
-
-type Foo = Spread<[{ a: string }, { a?: number }]>;
-
-function merge<A extends object[]>(...a: [...A]) {
-  return Object.assign({}, ...a) as Spread<A>;
-}
