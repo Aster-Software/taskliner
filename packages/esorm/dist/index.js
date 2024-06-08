@@ -39,6 +39,7 @@ var applyEsormQueryToQB = (qb, query) => {
 };
 
 // src/object.ts
+var import_zod = require("zod");
 var EsormDatabase = class {
   connection;
   routes;
@@ -84,13 +85,37 @@ var EsormColumn = class {
     this.type = type;
   }
 };
+var Columns = {
+  Int4: { type: "int4", validator: import_zod.z.number().int() },
+  Int8: { type: "int8", validator: import_zod.z.number().int() },
+  Float4: { type: "float4", validator: import_zod.z.number() },
+  Float8: { type: "float4", validator: import_zod.z.number() },
+  Text: { type: "text", validator: import_zod.z.string() },
+  TimestampTz: { type: "timestamptz", validator: import_zod.z.string().datetime() }
+};
 
 // src/router.ts
+var import_hono = require("hono");
 var EsormRoute = class {
   constructor() {
   }
 };
 var EsormRouter = class {
+  app;
+  db;
+  constructor(options) {
+    this.app = new import_hono.Hono();
+    this.db = options.db;
+    Object.entries(this.db.routes).forEach(([key, path]) => {
+      this.app.post(`/${key}/get-many`, (c) => {
+        const input = c.req.json();
+        const result = this.db.getMany(key, input);
+        return c.json({
+          data: result
+        });
+      });
+    });
+  }
 };
 
 // src/index.ts
@@ -98,6 +123,9 @@ console.log("Hello ESORM");
 var TestFunction = () => {
   console.log("ESORM TEST");
 };
+console.log("Arg 0", process.argv[0]);
+console.log("Arg 1", process.argv[1]);
+console.log("Arg 2", process.argv[2]);
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   EsormColumn,

@@ -2,6 +2,7 @@ import * as kysely_dist_cjs_util_type_utils from 'kysely/dist/cjs/util/type-util
 import * as kysely from 'kysely';
 import { Kysely, Insertable } from 'kysely';
 import * as kysely_dist_cjs_parser_table_parser from 'kysely/dist/cjs/parser/table-parser';
+import { Hono } from 'hono';
 
 type EsormQueryLine = {
     operator: "=";
@@ -16,7 +17,7 @@ type EsormQueryLine = {
 };
 type EsormQuery = void | EsormQueryLine;
 
-type EsormObjectType = "string" | "number" | "boolean" | "json";
+type EsormObjectType = "string" | "number" | "boolean" | "timestamptz" | "json";
 type RoutesConfig<DB> = Partial<{
     [Key in keyof DB & string]: {};
 }>;
@@ -57,7 +58,12 @@ declare class EsormColumn<T extends EsormObjectType> {
 declare class EsormRoute<T> {
     constructor();
 }
-declare class EsormRouter<T> {
+declare class EsormRouter<DB> {
+    app: Hono;
+    db: EsormDatabase<DB>;
+    constructor(options: {
+        db: EsormDatabase<DB>;
+    });
 }
 
 declare const TestFunction: () => void;

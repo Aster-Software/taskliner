@@ -1,0 +1,10 @@
+---
+import Layout from "../../astro/layouts/Layout.astro";
+import { AppRoot } from "../../solid/primary/AppRoot";
+---
+
+<Layout title="Workspaces">
+  <main>
+    <AppRoot client:only="solid-js" />
+  </main>
+</Layout>

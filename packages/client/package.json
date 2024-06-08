@@ -7,20 +7,31 @@
     "start": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "prepare": "panda codegen"
   },
   "dependencies": {
+    "@ark-ui/anatomy": "^3.2.0",
+    "@ark-ui/solid": "^3.1.0",
     "@astrojs/check": "^0.7.0",
     "@astrojs/node": "^8.2.5",
     "@astrojs/solid-js": "^4.2.0",
     "@kobalte/core": "^0.13.1",
+    "@pandacss/dev": "^0.40.1",
+    "@park-ui/panda-preset": "^0.37.1",
+    "@solidjs/router": "^0.13.3",
     "@supabase/supabase-js": "^2.43.4",
+    "@types/luxon": "^3.4.2",
     "astro": "^4.9.1",
+    "convex": "^1.12.1",
     "eslint": "^9.3.0",
     "json-stringify-deterministic": "^1.0.12",
+    "luxon": "^3.4.4",
+    "merge": "^2.1.1",
     "mobx": "^6.12.3",
     "solid-js": "^1.8.17",
     "typescript": "^5.4.5",
+    "vite-tsconfig-paths": "^4.3.2",
     "zod": "^3.23.8"
   },
   "packageManager": "pnpm@9.1.2+sha1.907f57a52517de34399d66401bf220a549e47b57"

@@ -1,13 +1,15 @@
 import { DatabaseConnection, Insertable, Kysely, Selectable, isKyselyProps } from "kysely";
 import { EsormQuery, applyEsormQueryToQB } from "./query";
+import { z } from "zod";
 
-type BaseEsormObject = {
-    id: string;
-    created: string;
-    updated: string;
-}
-
-type EsormObjectType = "string" | "number" | "boolean" | "json";
+type EsormColumnType = |
+"int4" |
+"int8" |
+"float4" |
+"float8" |
+"bool" |
+"text" |
+"timestamptz"
 
 type RoutesConfig<DB> = Partial<{ [Key in keyof DB & string]: {} }>;
 
@@ -79,10 +81,25 @@ export class EsormTable<T extends { [key: string]: EsormColumn<any> }> {
     }
 }
 
-export class EsormColumn<T extends EsormObjectType> {
-    type: EsormObjectType
+export class EsormColumn<T extends EsormColumnType> {
+    type: EsormColumnType
+    validator: typeof EsormColumnType[T]["validator"];
 
-    constructor(type: EsormObjectType) {
+    constructor(type: T) {
         this.type = type;
+        this.validator = EsormColumnType[type].validator;
     }
 }
+
+export const EsormColumnType = {
+    int4: { validator: z.number().int() },
+    int8: { validator: z.number().int() },
+    float4: { validator: z.number().int() },
+    float8: { validator: z.number().int() },
+    bool: { validator: z.boolean() },
+    text: { validator: z.string() },
+    timestamptz: { validator: z.string().datetime() }
+} satisfies Record<EsormColumnType, { validator: z.ZodTypeAny }>;
+
+// Related Items
+// Found using connected IDs.

@@ -1,11 +1,13 @@
 {
-  "extends": [
-    "../../tsconfig.json",
-    "astro/tsconfigs/strict"
-  ],
+  "extends": ["../../tsconfig.json", "astro/tsconfigs/strict"],
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js"
+    "jsxImportSource": "solid-js",
+    "paths": {
+      "~/*": ["./src/*"],
+      "@style/*": ["./styled-system/*"]
+    },
+    "baseUrl": "."
   },
-  "include": ["src"]
+  "include": ["src", "styled-system"]
 }
