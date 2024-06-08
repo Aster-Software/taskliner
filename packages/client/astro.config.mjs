@@ -16,7 +16,7 @@ export default defineConfig({
     mode: "standalone",
   }),
   vite: {
-    plugins: [tsconfigPaths({ root: "./" }), vanillaExtractPlugin()],
+    plugins: [tsconfigPaths({ root: "./" })],
     server: {
       proxy: {
         "/api": {

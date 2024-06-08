@@ -44,18 +44,31 @@ export default defineConfig({
           canvas: { value: "white" },
           ink: { value: "rgb(32, 32, 32)" },
 
+          panel: { value: "{colors.t00}" },
+          panel_hover: { value: "{colors.t04}" },
+          panel_text: { value: "{colors.t80}" },
+          panel_border: { value: "{colors.t20}" },
+          panel_placeholder: { value: "{colors.t30}" },
+
+          subtle: { value: "{colors.t08}" },
+          subtle_hover: { value: "{colors.t15}" },
+          subtle_text: { value: "{colors.t80}" },
+          subtle_border: { value: "clear" },
+          subtle_placeholder: { value: "{colors.t40}" },
+
           primary: { value: "{colors.t80}" },
           primary_hover: { value: "{colors.t99}" },
+          primary_text: { value: "white" },
+          primary_border: { value: "clear" },
+          primary_placeholder: { value: "rgba(255, 255, 255, 0.4)" },
 
           background: { value: "{colors.t05}" },
           background_hover: { value: "{colors.t08}" },
 
           border: { value: "{colors.t20}" },
 
-          panel: { value: "{colors.t00}" },
-          panel_hover: { value: "{colors.t03}" },
-
           disabled_text: { value: "{colors.t40}" },
+          placeholder_text: { value: "{colors.t30}" },
 
           focus: { value: "rgba(0, 200, 255, 0.5)" },
 
@@ -86,8 +99,48 @@ export default defineConfig({
         },
         borders: {
           clear: { value: "1px solid transparent" },
-          subtle: { value: "1px solid {colors.border}" },
           focus: { value: "1px solid {colors.focus}" },
+          default: { value: "1px solid {colors.t10}" },
+        },
+      },
+    },
+  },
+  utilities: {
+    extend: {
+      xComponent: {
+        values: { type: "boolean" },
+        transform(value, { token }) {
+          return {
+            padding: `0px ${token("spacing.4")}`,
+            height: token("spacing.9"),
+            background: token(`colors.t00`),
+            border: token(`borders.default`),
+            borderRadius: token("radii.sm"),
+            textOverflow: "ellipsis",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+          };
+        },
+      },
+      xComponentClickable: {
+        values: { type: "boolean" },
+        transform(value, { token }) {
+          return {
+            cursor: "pointer",
+            "&:hover": {
+              background: token(`colors.t04`),
+            },
+          };
+        },
+      },
+      xSubtleFocus: {
+        values: { type: "boolean" },
+        transform(value, { token }) {
+          return {
+            "&:focus-visible": {
+              outline: token("borders.focus"),
+            },
+          };
         },
       },
     },

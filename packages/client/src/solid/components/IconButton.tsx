@@ -1,9 +1,9 @@
 import { styled } from "@style/jsx";
-import { ComponentSystem } from "./_ComponentStyleSystem";
 
 export const IconButton = styled("button", {
   base: {
-    ...ComponentSystem.Base.control,
+    xComponent: true,
+    xComponentClickable: true,
     px: 0,
     w: 9,
     h: 9,
@@ -11,6 +11,4 @@ export const IconButton = styled("button", {
     alignContent: "center",
     justifyContent: "center",
   },
-  variants: { variant: ComponentSystem.ControlVariants },
-  defaultVariants: {},
 });

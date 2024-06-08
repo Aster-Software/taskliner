@@ -7,7 +7,10 @@ import { DateTime } from "luxon";
 import { recipes } from "./_ComponentStyleSystem";
 
 const styles = css({
-  '& [data-part="input"]': {},
+  '& [data-part="input"]': {
+    xComponent: true,
+    xSubtleFocus: true,
+  },
   '& [data-part="clear-trigger"]': {
     position: "absolute",
     top: "50%",
@@ -89,7 +92,7 @@ export const DatePicker = (props: {
       {/* <ArkDatePicker.Label>Label</ArkDatePicker.Label> */}
 
       <ArkDatePicker.Control>
-        <ArkDatePicker.Input class={recipes.input()} />
+        <ArkDatePicker.Input />
         <ArkDatePicker.Trigger>
           <IconButton class="fas fa-calendar" />
         </ArkDatePicker.Trigger>
