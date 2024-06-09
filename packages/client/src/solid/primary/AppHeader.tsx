@@ -7,7 +7,7 @@ import { Modal } from "../components/Modal";
 import { Button } from "../components/Button";
 import { FormGroup } from "../components/FormGroup";
 import { TextInput } from "../components/TextInput";
-import { HStack } from "@style/jsx";
+import { HStack, styled } from "@style/jsx";
 import type { Id } from "../../../../api/convex/_generated/dataModel";
 
 export const AppHeader = () => {
@@ -17,14 +17,12 @@ export const AppHeader = () => {
   const workspace_id = param.id as Id<"workspace"> | undefined;
 
   return (
-    <nav
-      class={css({
-        bg: "background",
-        py: 2,
-        px: 4,
-        display: "grid",
-        gridTemplateColumns: "auto minmax(0, 1fr) auto",
-      })}
+    <styled.nav
+      bg="background"
+      py={2}
+      px={4}
+      display="grid"
+      gridTemplateColumns="auto minmax(0, 1fr) auto"
     >
       <A href="/app" class={NavItemClass} activeClass={NavItemClassActive}>
         Home
@@ -46,7 +44,7 @@ export const AppHeader = () => {
 
       <Modal.Root>
         <Modal.Trigger>
-          <Button variant="subtle">
+          <Button>
             <i class="fas fa-plus" /> New Workspace
           </Button>
         </Modal.Trigger>
@@ -69,16 +67,23 @@ export const AppHeader = () => {
             </FormGroup>
           </form>
           <HStack justify="end">
-            <Button variant="subtle">Cancel</Button>
+            <Button>Cancel</Button>
             <Button>Create</Button>
           </HStack>
         </Modal.Content>
       </Modal.Root>
-    </nav>
+    </styled.nav>
   );
 };
 
-const NavItemClass = css({ py: 1, px: 2, mx: 2, fontWeight: "semibold" });
+const NavItemClass = css({
+  py: 1,
+  px: 2,
+  mx: 2,
+  fontWeight: "semibold",
+  fontSize: "sm",
+});
+
 const NavItemClassActive = css({
   color: "teal.600",
   borderBottomStyle: "solid",

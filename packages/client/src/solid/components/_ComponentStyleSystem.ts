@@ -205,3 +205,14 @@ export const getParts = <
 
   return result;
 };
+
+export const createConstructedComponent = <T, X extends Record<string, any>>(
+  root: T,
+  components: X,
+) => {
+  for (const key in components) {
+    (root as any)[key] = components[key];
+  }
+
+  return root as T & X;
+};

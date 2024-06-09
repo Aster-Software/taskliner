@@ -35,7 +35,7 @@ export const ComponentBaseSubtle = css.raw({
   border: "subtle",
   color: "subtle_text",
   _placeholder: { color: "subtle_placeholder" },
-  _disabled: { opacity: 0.35 },
+  _disabled: { opacity: "disabled" },
 });
 
 export const ComponentBaseDefaultClickable = css.raw(ComponentBaseDefault, {

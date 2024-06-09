@@ -7,40 +7,47 @@ import type {
   RecipeRuntimeFn,
 } from "@style/types";
 import merge from "merge";
-import { control, control_hoverable, input } from "./_PandaRecipes";
 import { mergeRecipes } from "./_PandaUtils";
-
-const t1 = mergeRecipes(control.config, control_hoverable.config);
-
-const B = styled("button", control);
-
-const Button = styled("button");
-const TextInput = styled("input", input);
+import { SelectInput } from "./SelectInput";
+import { TextInput } from "./TextInput";
+import { Button } from "./Button";
 
 export const PandaTest = () => {
   return (
-    <styled.div padding={30} display="grid" gap={4}>
-      <styled.div fontSize="lg">Panda Test</styled.div>
+    <styled.div display="grid" gap="4">
+      <styled.div textStyle="sm-heading">Panda Test</styled.div>
+      <styled.div textStyle="md-heading">Panda Test</styled.div>
+      <styled.div textStyle="lg-heading">Panda Test</styled.div>
 
       <Grid gridAutoFlow="column" justifyContent="start">
-        <B>Solid 2</B>
-        <B variant="primary">Solid 2</B>
-        <B variant="subtle">Filled 2</B>
+        <Button>Solid 2</Button>
+        <Button>Solid 2</Button>
+        <Button>Filled 2</Button>
       </Grid>
       <Grid gridAutoFlow="column" justifyContent="start">
-        <B>Solid 2</B>
-        <B variant="primary">Solid 2</B>
-        <B variant="subtle">Filled 2</B>
+        <Button>Solid 2</Button>
+        <Button>Solid 2</Button>
+        <Button>Filled 2</Button>
       </Grid>
       <Grid gridAutoFlow="column" justifyContent="start">
         <TextInput placeholder="Write Here..." />
-        <TextInput variant="primary" placeholder="Write Here..." />
-        <TextInput variant="subtle" placeholder="Write Here..." />
+        <TextInput placeholder="Write Here..." />
+        <TextInput placeholder="Write Here..." />
       </Grid>
       <Grid gridAutoFlow="column" justifyContent="start">
         <TextInput disabled placeholder="Write Here..." />
-        <TextInput disabled variant="primary" placeholder="Write Here..." />
-        <TextInput disabled variant="subtle" placeholder="Write Here..." />
+        <TextInput disabled placeholder="Write Here..." />
+        <TextInput disabled placeholder="Write Here..." />
+      </Grid>
+      <Grid gridAutoFlow="column" justifyContent="start">
+        <SelectInput
+          options={[
+            { label: "React", value: "react" },
+            { label: "Solid", value: "solid" },
+            { label: "Vue", value: "vue" },
+            { label: "Svelte", value: "svelte", disabled: true },
+          ]}
+        />
       </Grid>
     </styled.div>
   );

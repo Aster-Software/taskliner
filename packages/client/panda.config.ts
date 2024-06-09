@@ -1,4 +1,9 @@
-import { defineConfig, defineLayerStyles } from "@pandacss/dev";
+import {
+  defineConfig,
+  defineLayerStyles,
+  defineTextStyles,
+} from "@pandacss/dev";
+import { colord } from "colord";
 
 export default defineConfig({
   // Whether to use css reset
@@ -42,7 +47,10 @@ export default defineConfig({
       tokens: {
         colors: {
           canvas: { value: "white" },
+          canvas_hover: { value: colord("#ffffff").darken(0.05).toRgbString() },
           ink: { value: "rgb(32, 32, 32)" },
+
+          indicator: { value: "{colors.t40}" },
 
           panel: { value: "{colors.t00}" },
           panel_hover: { value: "{colors.t04}" },
@@ -62,83 +70,135 @@ export default defineConfig({
           primary_border: { value: "clear" },
           primary_placeholder: { value: "rgba(255, 255, 255, 0.4)" },
 
-          background: { value: "{colors.t05}" },
-          background_hover: { value: "{colors.t08}" },
+          background: { value: "{colors.t02}" },
+          background_hover: { value: "{colors.t06}" },
 
           border: { value: "{colors.t20}" },
 
           disabled_text: { value: "{colors.t40}" },
           placeholder_text: { value: "{colors.t30}" },
 
-          focus: { value: "rgba(0, 200, 255, 0.5)" },
+          focus: { value: colord("#0ea5e9").toHex() },
 
-          t99: { value: "rgba(0, 4, 10, 0.99)" },
-          t95: { value: "rgba(0, 4, 10, 0.95)" },
-          t90: { value: "rgba(0, 4, 10, 0.90)" },
-          t85: { value: "rgba(0, 4, 10, 0.85)" },
-          t80: { value: "rgba(0, 4, 10, 0.80)" },
-          t75: { value: "rgba(0, 4, 10, 0.75)" },
-          t70: { value: "rgba(0, 4, 10, 0.70)" },
-          t60: { value: "rgba(0, 4, 10, 0.60)" },
-          t50: { value: "rgba(0, 4, 10, 0.50)" },
-          t40: { value: "rgba(0, 4, 10, 0.40)" },
-          t30: { value: "rgba(0, 4, 10, 0.30)" },
-          t20: { value: "rgba(0, 4, 10, 0.20)" },
-          t15: { value: "rgba(0, 4, 10, 0.15)" },
-          t10: { value: "rgba(0, 4, 10, 0.10)" },
-          t09: { value: "rgba(0, 4, 10, 0.09)" },
-          t08: { value: "rgba(0, 4, 10, 0.08)" },
-          t07: { value: "rgba(0, 4, 10, 0.07)" },
-          t06: { value: "rgba(0, 4, 10, 0.06)" },
-          t05: { value: "rgba(0, 4, 10, 0.05)" },
-          t04: { value: "rgba(0, 4, 10, 0.04)" },
-          t03: { value: "rgba(0, 4, 10, 0.03)" },
-          t02: { value: "rgba(0, 4, 10, 0.02)" },
-          t01: { value: "rgba(0, 4, 10, 0.01)" },
-          t00: { value: "rgba(0, 4, 10, 0.00)" },
+          t99: { value: "rgba(0, 4, 15, 0.99)" },
+          t95: { value: "rgba(0, 4, 15, 0.95)" },
+          t90: { value: "rgba(0, 4, 15, 0.90)" },
+          t85: { value: "rgba(0, 4, 15, 0.85)" },
+          t80: { value: "rgba(0, 4, 15, 0.80)" },
+          t75: { value: "rgba(0, 4, 15, 0.75)" },
+          t70: { value: "rgba(0, 4, 15, 0.70)" },
+          t60: { value: "rgba(0, 4, 15, 0.60)" },
+          t50: { value: "rgba(0, 4, 15, 0.50)" },
+          t40: { value: "rgba(0, 4, 15, 0.40)" },
+          t30: { value: "rgba(0, 4, 15, 0.30)" },
+          t20: { value: "rgba(0, 4, 15, 0.20)" },
+          t15: { value: "rgba(0, 4, 15, 0.15)" },
+          t10: { value: "rgba(0, 4, 15, 0.10)" },
+          t09: { value: "rgba(0, 4, 15, 0.09)" },
+          t08: { value: "rgba(0, 4, 15, 0.08)" },
+          t07: { value: "rgba(0, 4, 15, 0.07)" },
+          t06: { value: "rgba(0, 4, 15, 0.06)" },
+          t05: { value: "rgba(0, 4, 15, 0.05)" },
+          t04: { value: "rgba(0, 4, 15, 0.04)" },
+          t03: { value: "rgba(0, 4, 15, 0.03)" },
+          t02: { value: "rgba(0, 4, 15, 0.02)" },
+          t01: { value: "rgba(0, 4, 15, 0.01)" },
+          t00: { value: "rgba(0, 4, 15, 0.00)" },
         },
         borders: {
           clear: { value: "1px solid transparent" },
           focus: { value: "1px solid {colors.focus}" },
-          default: { value: "1px solid {colors.t10}" },
+          subtle: { value: "1px solid {colors.t10}" },
+        },
+        fontSizes: {},
+        opacity: {
+          disabled: { value: 0.3 },
+        },
+      },
+    },
+    textStyles: {
+      caption: {
+        description: "Smaller text. Use this for labels.",
+        value: {
+          fontSize: "sm",
+        },
+      },
+
+      "sm-heading": {
+        value: {
+          fontSize: "lg",
+        },
+      },
+      "md-heading": {
+        value: {
+          fontSize: "xl",
+        },
+      },
+      "lg-heading": {
+        value: {
+          fontSize: "2xl",
         },
       },
     },
   },
   utilities: {
     extend: {
+      xPanel: {
+        values: { type: "boolean" },
+        transform: (value, { token }) => {
+          if (value === false) return {};
+
+          return {
+            background: token(`colors.canvas`),
+            border: token(`borders.subtle`),
+            borderRadius: token("radii.sm"),
+          };
+        },
+      },
       xComponent: {
         values: { type: "boolean" },
-        transform(value, { token }) {
+        transform: (value, { token }) => {
+          if (value === false) return {};
+
           return {
-            padding: `0px ${token("spacing.4")}`,
-            height: token("spacing.9"),
-            background: token(`colors.t00`),
-            border: token(`borders.default`),
+            padding: `0px ${token("spacing.3")}`,
+            height: token("spacing.8"),
+            background: token(`colors.canvas`),
+            border: token(`borders.subtle`),
             borderRadius: token("radii.sm"),
             textOverflow: "ellipsis",
             overflow: "hidden",
             whiteSpace: "nowrap",
+            fontSize: token("fontSizes.sm"),
+            display: "flex",
+            alignItems: "center",
+            "&:disabled": { opacity: 0.35 },
+            "&::placeholder": { color: token("colors.t30") },
           };
         },
       },
       xComponentClickable: {
         values: { type: "boolean" },
-        transform(value, { token }) {
+        transform: (value, { token }) => {
+          if (value === false) return {};
+
           return {
             cursor: "pointer",
             "&:hover": {
-              background: token(`colors.t04`),
+              background: token(`colors.canvas_hover`),
             },
           };
         },
       },
       xSubtleFocus: {
         values: { type: "boolean" },
-        transform(value, { token }) {
+        transform: (value, { token }) => {
+          if (value === false) return {};
+
           return {
             "&:focus-visible": {
               outline: token("borders.focus"),
+              outlineOffset: -1,
             },
           };
         },

@@ -1,7 +1,6 @@
-import { Container, HStack, VStack, styled } from "@style/jsx";
+import { styled } from "@style/jsx";
 import { useContext, type ComponentProps } from "solid-js";
 import { FormGroupContext } from "./FormGroup";
-import { ComponentSystem } from "./_ComponentStyleSystem";
 
 const Base = styled("input", {
   base: {

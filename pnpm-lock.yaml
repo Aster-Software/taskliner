@@ -114,6 +114,9 @@ importers:
       '@types/luxon':
         specifier: ^3.4.2
         version: 3.4.2
+      '@types/sortablejs':
+        specifier: ^1.15.8
+        version: 1.15.8
       '@vanilla-extract/css':
         specifier: ^1.15.2
         version: 1.15.2
@@ -153,9 +156,15 @@ importers:
       mobx:
         specifier: ^6.12.3
         version: 6.12.3
+      smooth-dnd:
+        specifier: ^0.12.1
+        version: 0.12.1
       solid-js:
         specifier: ^1.8.17
         version: 1.8.17
+      sortablejs:
+        specifier: ^1.15.2
+        version: 1.15.2
       typescript:
         specifier: ^5.4.5
         version: 5.4.5
@@ -2127,6 +2136,9 @@ packages:
 
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
+
+  '@types/sortablejs@1.15.8':
+    resolution: {integrity: sha512-b79830lW+RZfwaztgs1aVPgbasJ8e7AXtZYHTELNXZPsERt4ymJdjV4OccDbHQAvHrCcFpbF78jkm0R6h/pZVg==}
 
   '@types/unist@2.0.10':
     resolution: {integrity: sha512-IfYcSBWE3hLpBg8+X2SEa8LVkJdJEkT2Ese2aaLs3ptGdVtABxndrMaxuFlQ1qdFf9Q5rDvDpxI3WwgvKFAsQA==}
@@ -5350,6 +5362,9 @@ packages:
   smob@1.5.0:
     resolution: {integrity: sha512-g6T+p7QO8npa+/hNx9ohv1E5pVCmWrVCUzUXJyLdMmftX6ER0oiWY/w9knEonLpnOp6b6FenKnMfR8gqwWdwig==}
 
+  smooth-dnd@0.12.1:
+    resolution: {integrity: sha512-Dndj/MOG7VP83mvzfGCLGzV2HuK1lWachMtWl/Iuk6zV7noDycIBnflwaPuDzoaapEl3Pc4+ybJArkkx9sxPZg==}
+
   solid-js@1.8.17:
     resolution: {integrity: sha512-E0FkUgv9sG/gEBWkHr/2XkBluHb1fkrHywUgA6o6XolPDCJ4g1HaLmQufcBBhiF36ee40q+HpG/vCZu7fLpI3Q==}
 
@@ -5368,6 +5383,9 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       solid-js: ^1.7
+
+  sortablejs@1.15.2:
+    resolution: {integrity: sha512-FJF5jgdfvoKn1MAKSdGs33bIqLi3LmsgVTliuX6iITj834F+JRQZN90Z93yql8h0K2t0RwDPBmxwlbZfDcxNZA==}
 
   source-map-js@1.2.0:
     resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
@@ -7931,6 +7949,8 @@ snapshots:
       csstype: 3.1.3
 
   '@types/resolve@1.20.2': {}
+
+  '@types/sortablejs@1.15.8': {}
 
   '@types/unist@2.0.10': {}
 
@@ -12521,6 +12541,8 @@ snapshots:
 
   smob@1.5.0: {}
 
+  smooth-dnd@0.12.1: {}
+
   solid-js@1.8.17:
     dependencies:
       csstype: 3.1.3
@@ -12542,6 +12564,8 @@ snapshots:
   solid-use@0.8.0(solid-js@1.8.17):
     dependencies:
       solid-js: 1.8.17
+
+  sortablejs@1.15.2: {}
 
   source-map-js@1.2.0: {}
 

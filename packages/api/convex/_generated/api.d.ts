@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as project from "../project.js";
+import type * as task from "../task.js";
 import type * as workspace from "../workspace.js";
 
 /**
@@ -27,6 +28,7 @@ import type * as workspace from "../workspace.js";
  */
 declare const fullApi: ApiFromModules<{
   project: typeof project;
+  task: typeof task;
   workspace: typeof workspace;
 }>;
 export declare const api: FilterApi<

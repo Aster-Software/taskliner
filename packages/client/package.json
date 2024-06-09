@@ -22,6 +22,7 @@
     "@solidjs/router": "^0.13.3",
     "@supabase/supabase-js": "^2.43.4",
     "@types/luxon": "^3.4.2",
+    "@types/sortablejs": "^1.15.8",
     "@vanilla-extract/css": "^1.15.2",
     "@vanilla-extract/css-utils": "^0.1.4",
     "@vanilla-extract/recipes": "^0.5.3",
@@ -35,7 +36,9 @@
     "luxon": "^3.4.4",
     "merge": "^2.1.1",
     "mobx": "^6.12.3",
+    "smooth-dnd": "^0.12.1",
     "solid-js": "^1.8.17",
+    "sortablejs": "^1.15.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^4.3.2",
     "zod": "^3.23.8"

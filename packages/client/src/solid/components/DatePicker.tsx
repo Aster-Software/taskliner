@@ -4,7 +4,6 @@ import { IconButton } from "./IconButton";
 import { css } from "@style/css";
 import { Center } from "@style/jsx";
 import { DateTime } from "luxon";
-import { recipes } from "./_ComponentStyleSystem";
 
 const styles = css({
   '& [data-part="input"]': {

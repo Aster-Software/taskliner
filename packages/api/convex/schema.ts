@@ -13,4 +13,14 @@ export default defineSchema({
     datetime_start: v.optional(v.float64()),
     datetime_end: v.optional(v.float64()),
   }),
+  task: defineTable({
+    workspace_id: v.id("workspace"),
+    name: v.string(),
+    description: v.optional(v.string()),
+
+    datetime_start: v.optional(v.float64()),
+    datetime_end: v.optional(v.float64()),
+
+    status: v.optional(v.string()),
+  }),
 });

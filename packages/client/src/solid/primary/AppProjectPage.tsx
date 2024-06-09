@@ -9,6 +9,9 @@ import { recipes } from "../components/_ComponentStyleSystem";
 import { TextInput } from "../components/TextInput";
 import { Button } from "../components/Button";
 import { PandaTest } from "../components/_PantaTest";
+import { Panel } from "../components/Panel";
+import { styled } from "@style/jsx";
+import { TaskSettingsForm } from "./TaskSettingsForm";
 
 export const AppProjectPage = () => {
   const params = useParams();
@@ -29,27 +32,26 @@ export const AppProjectPage = () => {
       {(project) => (
         <Container maxWidth={1200} py={4}>
           <Grid gap={4}>
-            <h1>{project.name}</h1>
-            <div>Hello Project!</div>
-            <DatePicker
-              value="2024-06-06"
-              onChange={(value) => console.log(value)}
-            />
-            <DatePicker
-              value="2024-06-06"
-              onChange={(value) => console.log(value)}
-            />
+            <Panel>
+              <styled.h1 textStyle="lg-heading">{project.name}</styled.h1>
+              <div>Hello Project!</div>
+              <DatePicker
+                value="2024-06-06"
+                onChange={(value) => console.log(value)}
+              />
+              <DatePicker
+                value="2024-06-06"
+                onChange={(value) => console.log(value)}
+              />
+            </Panel>
 
-            <div class={recipes.panel()}>
-              <h2>Hell World</h2>
-
-              <Grid columns={4}>
-                <Button>Click Here</Button>
-                <TextInput placeholder="Write Stuff..." />
-              </Grid>
-
+            <Panel>
               <PandaTest />
-            </div>
+            </Panel>
+
+            <Panel>
+              <TaskSettingsForm />
+            </Panel>
           </Grid>
         </Container>
       )}

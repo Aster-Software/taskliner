@@ -23,6 +23,8 @@ export const createQuery = <T extends TT>(
       funcArgs,
       (data) => {
         runInAction(() => {
+          console.log("UPDATE");
+
           state.isLoading = false;
           state.isError = false;
           state.data = data;

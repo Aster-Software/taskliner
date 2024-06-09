@@ -12,13 +12,18 @@ import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { Timeline } from "./Timeline";
 import { ProjectCard } from "./ProjectCard";
+import { Form } from "../components/Form";
+import { TaskCard } from "./TaskCard";
+import { Kanban } from "./Kanban";
+import { KanbanV2 } from "./KanbanV2";
 
 export const AppWorkspacePage = () => {
   const params = useParams();
   const workspace_id = params.workspace_id as Id<"workspace">;
 
   const workspace = createQuery(api.workspace.one, { id: workspace_id });
-  const workspaces = createQuery(api.project.get, { workspace_id });
+  const projects = createQuery(api.project.get, { workspace_id });
+  const tasks = createQuery(api.task.get, { workspace_id });
 
   const state = makeAutoObservable({
     isOpen: false,
@@ -30,9 +35,11 @@ export const AppWorkspacePage = () => {
     <Container maxWidth="1600px" px={0}>
       <Grid p={4} gap={6}>
         <Timeline />
+        <KanbanV2 />
 
+        {/* Projects */}
         <Grid gridTemplateColumns={4}>
-          <For each={workspaces.data}>
+          <For each={projects.data}>
             {(project) => (
               <A href={`/app/workspace/${workspace_id}/project/${project._id}`}>
                 <ProjectCard project={project} />
@@ -47,10 +54,8 @@ export const AppWorkspacePage = () => {
                 </Button>
               </Modal.Trigger>
               <Modal.Content title="Creating New Project" w="500px">
-                <form
+                <Form
                   onSubmit={async (e) => {
-                    e.preventDefault();
-
                     const form = e.currentTarget;
                     const formData = new FormData(form);
                     const values = Object.fromEntries(formData) as any;
@@ -65,38 +70,20 @@ export const AppWorkspacePage = () => {
                     // Close Modal
                   }}
                 >
-                  <VStack alignItems="stretch">
-                    <FormGroup label="Name">
-                      <TextInput name="name" variant="filled" />
-                    </FormGroup>
-                    <HStack justify="end">
-                      <Button>Cancel</Button>
-                      <Button variant="solid">Create</Button>
-                    </HStack>
-                  </VStack>
-                </form>
+                  <FormGroup label="Name">
+                    <TextInput name="name" />
+                  </FormGroup>
+
+                  <Form.Footer>
+                    <Form.CancelButton></Form.CancelButton>
+                    <Form.SubmitButton></Form.SubmitButton>
+                  </Form.Footer>
+                </Form>
               </Modal.Content>
             </Modal.Root>
           </div>
         </Grid>
 
-        <Grid gridAutoFlow="column" justifyContent="start">
-          <TextInput />
-          <TextInput variant="filled" />
-          <Button variant="filled">Filled Style</Button>
-          <Button variant="solid">Solid Style</Button>
-          <Button
-            onClick={() =>
-              ToasterController.create({
-                title: "Toast Title",
-                description: "Toast Description",
-                type: "info",
-              })
-            }
-          >
-            Test Toast
-          </Button>
-        </Grid>
         <ToasterManager />
       </Grid>
     </Container>
