@@ -1,27 +1,36 @@
 import { Dialog } from "@ark-ui/solid";
 import { css } from "@style/css";
-import { Stack, VStack } from "@style/jsx";
+import { Stack, VStack, styled } from "@style/jsx";
 import { makeAutoObservable } from "mobx";
 import type { JSXElement } from "solid-js";
 import { Show } from "solid-js";
 import { Portal } from "solid-js/web";
+import { createStoreWithContext } from "../utilities/utils";
 
 type ControllerProps = {};
 
-const Root = (props: { children?: JSXElement }) => {
+export const ModalStore = createStoreWithContext(() => {
   const state = makeAutoObservable({
     isOpen: false,
 
     setIsOpen: (value: boolean) => (state.isOpen = value),
   });
 
+  return state;
+});
+
+const Root = (props: { children?: JSXElement }) => {
+  const state = ModalStore.create();
+
   return (
-    <Dialog.Root
-      open={state.isOpen}
-      onOpenChange={(e) => state.setIsOpen(e.open)}
-    >
-      {props.children}
-    </Dialog.Root>
+    <ModalStore.Provider value={state}>
+      <Dialog.Root
+        open={state.isOpen}
+        onOpenChange={(e) => state.setIsOpen(e.open)}
+      >
+        {props.children}
+      </Dialog.Root>
+    </ModalStore.Provider>
   );
 };
 
@@ -57,6 +66,8 @@ const Content = (props: {
             position: "relative",
             w: props.w,
             h: props.h,
+            maxW: "100dvw",
+            maxH: "100dvh",
             bg: "white",
             p: 4,
             rounded: "sm",
@@ -83,4 +94,5 @@ export const Modal = {
   Root,
   Trigger,
   Content,
+  Contextual: ModalStore.Contextual,
 };

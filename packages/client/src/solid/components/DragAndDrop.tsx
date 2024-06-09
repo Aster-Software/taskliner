@@ -1,69 +1,50 @@
-import { Float, styled } from "@style/jsx";
+import { Center, Float, styled } from "@style/jsx";
 import { makeAutoObservable } from "mobx";
-import {
-  createContext,
-  createEffect,
-  createUniqueId,
-  useContext,
-  type JSXElement,
-} from "solid-js";
+import { For, Show, createUniqueId, type JSXElement } from "solid-js";
 import { createConstructedComponent } from "./_ComponentStyleSystem";
 
-import { DraggableListStore, DragAndDropGlobalState } from "./DragAndDropStore";
-import {
-  assertIsDefined,
-  createRef,
-  getDomAncestors,
-} from "../utilities/utils";
+import { DraggableListStore, G, type DraggableProps } from "./DragAndDropStore";
+import { assertIsDefined, createRef } from "../utilities/utils";
+import { Fill } from "./Fill";
 
-export const Root = (props: {
-  onAdd?: (e: {}) => void;
-
-  children?: JSXElement;
-}) => {
-  const state = DraggableListStore.create();
+export const Root = <T extends any>(props: DraggableProps<T>) => {
+  const controller = DraggableListStore.create(props);
 
   return (
-    <styled.div>
-      <DraggableListStore.Provider value={state}>
+    <DraggableListStore.Provider value={controller}>
+      <styled.div position="relative">
         <styled.div
-          id={state.id}
-          ref={state.ref.set}
+          id={controller.id}
+          ref={controller.ref.set}
           display="grid"
-          gap={2}
-          minHeight="50px"
+          alignItems="start"
+          gap={0.5}
+          minHeight={G.isDragging ? "50px" : "0px"}
           onDragEnter={(e) => e.preventDefault()} // Necessary to make the div a drop zone
           onDragOver={(e) => e.preventDefault()} // Necessary to make the div a drop zone
-          onDrop={(e) => {
-            console.log("DROP");
-          }}
+          data-draggable-list
         >
-          {props.children}
+          <For each={controller.props.items}>
+            {(item, index) => (
+              <Draggable index={index()}>
+                {controller.props.render?.(item, index())}
+              </Draggable>
+            )}
+          </For>
         </styled.div>
-      </DraggableListStore.Provider>
-
-      <styled.div height="50px"></styled.div>
-      <div>draggedOverIndex: {state.draggedOverIndex}</div>
-      <div>children: {state.children.length}</div>
-    </styled.div>
+        {props.children}
+      </styled.div>
+    </DraggableListStore.Provider>
   );
 };
 
-const Draggable = (props: { children?: JSXElement }) => {
+const Draggable = (props: { index: number; children?: JSXElement }) => {
   const controller = DraggableListStore.useContext();
 
   assertIsDefined(controller);
 
   const state = makeAutoObservable({
     ref: createRef(),
-
-    get index() {
-      if (state.ref.el) {
-        return controller.children.indexOf(state.ref.el);
-      } else {
-        return -1;
-      }
-    },
   });
 
   return (
@@ -73,22 +54,30 @@ const Draggable = (props: { children?: JSXElement }) => {
       position="relative"
       transition="transform 150ms"
       draggable
-      onDragStart={(e) =>
-        DragAndDropGlobalState.startDrag(e.currentTarget, controller.id)
-      }
-      onDragEnd={() => DragAndDropGlobalState.endDrag()}
+      onDragStart={(e) => G.startDrag(e.currentTarget, controller.id)}
+      onDragEnd={() => G.endDrag()}
       data-draggable-list-id={controller.id}
       data-draggable-item // Indicates that this is a draggable item
-      data-draggable-index={state.index}
+      data-draggable-index={props.index}
       data-draggable-original // Indicates that this is an original copy, not the clone
     >
       {props.children}
-
-      <Float placement="middle-end">{state.index}</Float>
     </styled.div>
   );
 };
 
+const Fallback = (props: { children?: JSXElement }) => {
+  const controller = DraggableListStore.useContext();
+
+  assertIsDefined(controller);
+
+  return (
+    <Show when={!controller.props.items?.length && !G.isDragging}>
+      <Fill>{props.children}</Fill>
+    </Show>
+  );
+};
+
 export const DraggableList = createConstructedComponent(Root, {
-  Draggable,
+  Fallback,
 });

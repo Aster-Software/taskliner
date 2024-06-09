@@ -44,13 +44,16 @@ export const update = mutation({
   args: {
     workspace_id: v.id("workspace"),
     task_id: v.id("task"),
+
     name: v.optional(v.string()),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.task_id, {
-      // name: args.name,
-      status: args.status,
-    });
+    const update = {} as typeof args;
+
+    if (args.name !== undefined) update.name = args.name;
+    if (args.status !== undefined) update.status = args.status;
+
+    await ctx.db.patch(args.task_id, update);
   },
 });

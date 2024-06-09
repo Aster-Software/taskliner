@@ -14,6 +14,9 @@ export const Button = styled("button", {
           bg: "primary_hover",
         },
       },
+      subtle: {
+        bg: "transparent",
+      },
     },
   },
 });

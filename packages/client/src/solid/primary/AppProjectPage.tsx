@@ -44,14 +44,6 @@ export const AppProjectPage = () => {
                 onChange={(value) => console.log(value)}
               />
             </Panel>
-
-            <Panel>
-              <PandaTest />
-            </Panel>
-
-            <Panel>
-              <TaskSettingsForm />
-            </Panel>
           </Grid>
         </Container>
       )}

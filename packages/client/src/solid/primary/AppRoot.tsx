@@ -9,19 +9,21 @@ import { ToasterController, ToasterManager } from "../components/Toaster";
 import { Container, HStack, VStack } from "@style/jsx";
 import { Button } from "~/parkui/button";
 import * as Accordion from "~/parkui/accordion";
-import { HeaderLayout } from "../components/HeaderLayout";
+import { ContentWithHeaderLayout } from "../components/ContentWithHeaderLayout";
 
 const routes: RouteDefinition[] = [
   {
     path: "/",
     component: (props) => (
       <div>
-        <HeaderLayout.Root>
-          <HeaderLayout.Header>
+        <ContentWithHeaderLayout.Root>
+          <ContentWithHeaderLayout.Header>
             <AppHeader />
-          </HeaderLayout.Header>
-          <HeaderLayout.Content>{props.children}</HeaderLayout.Content>
-        </HeaderLayout.Root>
+          </ContentWithHeaderLayout.Header>
+          <ContentWithHeaderLayout.Content>
+            {props.children}
+          </ContentWithHeaderLayout.Content>
+        </ContentWithHeaderLayout.Root>
       </div>
     ),
     children: [
@@ -29,6 +31,12 @@ const routes: RouteDefinition[] = [
       {
         path: "/app/workspace/:workspace_id",
         component: () => <AppWorkspacePage />,
+        // children: [
+        //   {
+        //     path: "/app/workspace/:workspace_id/task/:task_id",
+        //     component: () => <div>Hello Task</div>,
+        //   },
+        // ],
       },
       {
         path: "/app/workspace/:workspace_id/project/:project_id",

@@ -9,6 +9,7 @@ import { FormGroup } from "../components/FormGroup";
 import { TextInput } from "../components/TextInput";
 import { HStack, styled } from "@style/jsx";
 import type { Id } from "../../../../api/convex/_generated/dataModel";
+import { LeftIcon } from "../components/Icon";
 
 export const AppHeader = () => {
   const state = createQuery(api.workspace.get, {});
@@ -45,7 +46,7 @@ export const AppHeader = () => {
       <Modal.Root>
         <Modal.Trigger>
           <Button>
-            <i class="fas fa-plus" /> New Workspace
+            <LeftIcon class="fas fa-plus" /> New Workspace
           </Button>
         </Modal.Trigger>
         <Modal.Content w="500px" title="Create New Workspace">

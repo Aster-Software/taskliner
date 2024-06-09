@@ -1,29 +1,32 @@
-import { css } from "@style/css";
 import { styled } from "@style/jsx";
-import { grid } from "@style/patterns";
+import { createConstructedComponent } from "./_ComponentStyleSystem";
 
 const Root = styled("div", {
   base: {
     display: "grid",
-    position: "absolute",
-    w: "100%",
-    h: "100%",
-    gridTemplateRows: "auto minmax(0, 1fr)",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    gap: 1,
   },
 });
 
-const Header = styled("div", {
-  base: {},
-});
-
-const Content = styled("div", {
+const Left = styled("div", {
   base: {
-    overflow: "auto",
+    display: "grid",
+    gap: 1,
+    gridAutoFlow: "column",
   },
 });
 
-export const HeaderLayout = {
-  Root,
-  Header,
-  Content,
-};
+const Right = styled("div", {
+  base: {
+    display: "grid",
+    gap: 1,
+    gridAutoFlow: "column",
+    justifyContent: "end",
+  },
+});
+
+export const HorizontalLayout = createConstructedComponent(Root, {
+  Left,
+  Right,
+});

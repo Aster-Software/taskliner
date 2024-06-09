@@ -28,7 +28,14 @@ export default defineConfig({
 
   globalCss: {
     ":root": {
-      letterSpacing: 0.12,
+      // letterSpacing: 0.12,
+
+      fontSize: "lg",
+      fontFamily: "Inter",
+      fontOpticalSizing: "auto",
+      fontWeight: 500,
+      fontStyle: "normal",
+      fontVariationSettings: `"slnt" 0`,
     },
   },
 
@@ -114,6 +121,11 @@ export default defineConfig({
         opacity: {
           disabled: { value: 0.3 },
         },
+        fonts: {
+          inter: {
+            value: "Inter",
+          },
+        },
       },
     },
     textStyles: {
@@ -127,6 +139,11 @@ export default defineConfig({
       "sm-heading": {
         value: {
           fontSize: "lg",
+          fontFamily: "Inter",
+          fontOpticalSizing: "auto",
+          fontWeight: 500,
+          fontStyle: "normal",
+          fontVariationSettings: `"slnt" 0`,
         },
       },
       "md-heading": {
@@ -143,6 +160,17 @@ export default defineConfig({
   },
   utilities: {
     extend: {
+      xBlock: {
+        values: { type: "boolean" },
+        transform: (value, { token }) => {
+          if (value === false) return {};
+
+          return {
+            display: "block",
+            width: "100%",
+          };
+        },
+      },
       xPanel: {
         values: { type: "boolean" },
         transform: (value, { token }) => {
