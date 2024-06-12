@@ -19,6 +19,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
+  Esorm: () => Esorm,
   EsormColumn: () => EsormColumn,
   EsormDatabase: () => EsormDatabase,
   EsormObject: () => EsormTable,
@@ -81,17 +82,20 @@ var EsormTable = class {
 };
 var EsormColumn = class {
   type;
+  validator;
   constructor(type) {
     this.type = type;
+    this.validator = EsormColumnType[type].validator;
   }
 };
-var Columns = {
-  Int4: { type: "int4", validator: import_zod.z.number().int() },
-  Int8: { type: "int8", validator: import_zod.z.number().int() },
-  Float4: { type: "float4", validator: import_zod.z.number() },
-  Float8: { type: "float4", validator: import_zod.z.number() },
-  Text: { type: "text", validator: import_zod.z.string() },
-  TimestampTz: { type: "timestamptz", validator: import_zod.z.string().datetime() }
+var EsormColumnType = {
+  int4: { validator: import_zod.z.number().int() },
+  int8: { validator: import_zod.z.number().int() },
+  float4: { validator: import_zod.z.number().int() },
+  float8: { validator: import_zod.z.number().int() },
+  bool: { validator: import_zod.z.boolean() },
+  text: { validator: import_zod.z.string() },
+  timestamptz: { validator: import_zod.z.string().datetime() }
 };
 
 // src/router.ts
@@ -118,6 +122,71 @@ var EsormRouter = class {
   }
 };
 
+// src/esorm.ts
+var import_cuid2 = require("@paralleldrive/cuid2");
+var Esorm = (schema, connection) => {
+  const db = connection;
+  const result = {
+    db,
+    schema,
+    get: async (type) => {
+      return await db.selectFrom(type).selectAll().orderBy("created").execute();
+    },
+    create: async (type, data) => {
+      const record = {
+        id: (0, import_cuid2.createId)(),
+        created: Date.now(),
+        updated: Date.now(),
+        data
+      };
+      await db.insertInto(type).values([record]).execute();
+    },
+    /** Apply one operation */
+    apply_operation: async (db2, operation) => {
+      console.log("APPLY", operation);
+      if (operation.operation === "create") {
+        const record = {
+          id: operation.id,
+          created: Date.now(),
+          updated: Date.now(),
+          data: {}
+        };
+        await db2.insertInto(operation.type).values([record]).execute();
+      }
+      if (operation.operation === "delete") {
+        await db2.deleteFrom(operation.type).where("id", "=", operation.id).executeTakeFirst();
+      }
+      if (operation.operation === "update") {
+        if (operation.path.length === 0)
+          return;
+        const item = await db2.selectFrom(operation.type).where("id", "=", operation.id).select("data").executeTakeFirstOrThrow();
+        let current = item.data;
+        let p = operation.path.slice(1);
+        let k = operation.path.at(-1);
+        for (const key of p) {
+          current = typeof current === "object" ? current[key] : void 0;
+        }
+        if (typeof current === "object") {
+          current[k] = operation.value;
+        }
+        await db2.updateTable(operation.type).where("id", "=", operation.id).set("data", item.data).execute();
+      }
+      return;
+    },
+    /** Apply many operations */
+    apply_operations: async (operations) => {
+      await db.transaction().execute(async (db2) => {
+        for (const operation of operations) {
+          await result.apply_operation(db2, operation);
+        }
+      });
+    },
+    _type_db: void 0,
+    _type_schema: void 0
+  };
+  return result;
+};
+
 // src/index.ts
 console.log("Hello ESORM");
 var TestFunction = () => {
@@ -128,6 +197,7 @@ console.log("Arg 1", process.argv[1]);
 console.log("Arg 2", process.argv[2]);
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  Esorm,
   EsormColumn,
   EsormDatabase,
   EsormObject,
