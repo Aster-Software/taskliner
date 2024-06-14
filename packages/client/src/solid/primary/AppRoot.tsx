@@ -10,6 +10,7 @@ import { Container, HStack, VStack } from "@style/jsx";
 import { Button } from "~/parkui/button";
 import * as Accordion from "~/parkui/accordion";
 import { ContentWithHeaderLayout } from "../components/ContentWithHeaderLayout";
+import { HomePage } from "./HomePage";
 
 const routes: RouteDefinition[] = [
   {
@@ -20,23 +21,15 @@ const routes: RouteDefinition[] = [
           <ContentWithHeaderLayout.Header>
             <AppHeader />
           </ContentWithHeaderLayout.Header>
-          <ContentWithHeaderLayout.Content>
-            {props.children}
-          </ContentWithHeaderLayout.Content>
+          <ContentWithHeaderLayout.Content>{props.children}</ContentWithHeaderLayout.Content>
         </ContentWithHeaderLayout.Root>
       </div>
     ),
     children: [
-      { path: "/app", component: () => "Hello Home" },
+      { path: "/app", component: () => <HomePage /> },
       {
         path: "/app/workspace/:workspace_id",
         component: () => <AppWorkspacePage />,
-        // children: [
-        //   {
-        //     path: "/app/workspace/:workspace_id/task/:task_id",
-        //     component: () => <div>Hello Task</div>,
-        //   },
-        // ],
       },
       {
         path: "/app/workspace/:workspace_id/project/:project_id",

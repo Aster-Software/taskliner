@@ -1,56 +1,81 @@
-import { Esorm } from "esorm";
-import { PostgresDialect } from "kysely";
-import pg from "pg";
+import { Esorm, EsormTypes } from "esorm";
 import { Environment } from "./core/Environment.js";
 import { config } from "dotenv";
-import { database } from "./core/Database.js";
 import { createId } from "@paralleldrive/cuid2";
 
 config();
 
-export const esorm = Esorm(
-  {
+const password = process.env.ATLAS_PASSWORD;
+const mongodb_db = "test";
+const mongodb_url = `mongodb+srv://jaekwak02:${password}@taskliner-test.rknmnru.mongodb.net/?retryWrites=true&w=majority&appName=taskliner-test`;
+
+export const esorm = await Esorm({
+  port: 4000,
+  mongodb_db,
+  mongodb_url,
+  schema: {
     workspace: {
       relations: {},
       properties: {
-        name: { type: "string" },
+        name: EsormTypes.string,
       },
     },
     task: {
       relations: {},
       properties: {
-        name: { type: "string" },
-        description: { type: "string" },
-        status: { type: "string" },
+        name: EsormTypes.string,
+        description: EsormTypes.string,
+        status: EsormTypes.string,
       },
     },
   },
-  database as any,
-);
+});
+
+export type EsormType = typeof esorm;
 
 export const test = async () => {
   console.log("Starting Esorm Test...");
 
-  const workspaces = await esorm.get("workspace");
-  const tasks = await esorm.get("task");
+  // await esorm.apply_operation({
+  //   operation: "create",
+  //   type: "workspace",
+  //   id: createId(),
+  //   data: {
+  //     name: `Heller World ${(Math.random() * 1000).toFixed()}`,
+  //   },
+  // });
 
-  console.log(
-    "T1",
-    workspaces.map((x) => x.data.name),
-  );
-
-  const id = createId();
-
-  await esorm.apply_operations([
-    { operation: "delete", type: "workspace", id: workspaces[0].id },
-    { operation: "create", type: "workspace", id },
-    { operation: "update", type: "workspace", id, path: ["name"], value: (Math.random() * 1000).toFixed() },
+  esorm.apply_operations([
+    // {
+    //   operation: "update",
+    //   type: "workspace",
+    //   id: "none",
+    //   column: "name",
+    //   value: "Workspace 2",
+    // },
+    // {
+    //   operation: "update",
+    //   type: "workspace",
+    //   id: "t431s5zipquyyhsdf5vmc4yf",
+    //   column: "description",
+    //   value: "This is a description of the project",
+    // },
+    // {
+    //   operation: "update",
+    //   type: "workspace",
+    //   id: "t431s5zipquyyhsdf5vmc4yf",
+    //   column: "status",
+    //   value: "dormant",
+    // },
   ]);
 
-  const w2 = await esorm.get("workspace");
+  const workspaces = await esorm.getMany({ type: "workspace" });
+  const tasks = await esorm.getMany({ type: "task" });
 
-  console.log(
-    "T2",
-    w2.map((x) => x.data.name),
-  );
+  console.log({
+    workspaces,
+    tasks,
+  });
+
+  console.log("Finished Esorm Test!");
 };

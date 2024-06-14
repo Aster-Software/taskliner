@@ -12,6 +12,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createTable("project")
     .addColumn("id", "text", (col) => col.primaryKey())
+    .addColumn("workspace_id", "text", (col) => col.references("workspace.id").onDelete("cascade"))
     .addColumn("created", "int8")
     .addColumn("updated", "int8")
     .addColumn("data", "jsonb")
@@ -20,6 +21,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createTable("task")
     .addColumn("id", "text", (col) => col.primaryKey())
+    .addColumn("workspace_id", "text", (col) => col.references("workspace.id").onDelete("cascade"))
     .addColumn("created", "int8")
     .addColumn("updated", "int8")
     .addColumn("data", "jsonb")

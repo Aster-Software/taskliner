@@ -38,7 +38,7 @@ export const Esorm = <T extends EsormSchemaDefinition>(schema: T, connection: Ky
         operation: "update";
         type: keyof DB & string;
         id: string;
-        path: string[];
+        column: string;
         value: any;
       };
 
@@ -82,34 +82,16 @@ export const Esorm = <T extends EsormSchemaDefinition>(schema: T, connection: Ky
           .deleteFrom(operation.type)
           .where("id", "=", operation.id as any)
           .executeTakeFirst();
+
+        // Figure out relationships
       }
 
       if (operation.operation === "update") {
-        if (operation.path.length === 0) return;
-
-        const item: any = await db
-          .selectFrom(operation.type)
-          .where("id", "=", operation.id as any)
-          .select("data")
-          .executeTakeFirstOrThrow();
-
-        let current = item.data;
-        let p = operation.path.slice(1);
-        let k = operation.path.at(-1);
-
-        for (const key of p) {
-          current = typeof current === "object" ? current[key] : undefined;
-        }
-
-        if (typeof current === "object") {
-          current[k] = operation.value;
-        }
-
         await db
           .updateTable(operation.type)
           .where("id", "=", operation.id as any)
-          .set("data", item.data)
-          .execute();
+          .set(operation.column as any, operation.value)
+          .executeTakeFirstOrThrow();
       }
 
       return;

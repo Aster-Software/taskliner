@@ -1,190 +1,244 @@
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// src/index.ts
-var src_exports = {};
-__export(src_exports, {
-  Esorm: () => Esorm,
-  EsormColumn: () => EsormColumn,
-  EsormDatabase: () => EsormDatabase,
-  EsormObject: () => EsormTable,
-  EsormRoute: () => EsormRoute,
-  EsormRouter: () => EsormRouter,
-  TestFunction: () => TestFunction
-});
-module.exports = __toCommonJS(src_exports);
-
-// src/query.ts
-var applyEsormQueryToQB = (qb, query) => {
-  if (query) {
-    if (query.operator === "=") {
-      qb.where(query.column, query.operator, query.value);
+// src/mongo.ts
+import { MongoClient, ServerApiVersion } from "mongodb";
+var createClient = async (url) => {
+  const client = new MongoClient(url, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true
     }
-  }
-  return qb;
+  });
+  await client.connect();
+  await client.db("admin").command({ ping: 1 });
+  console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  return client;
 };
 
-// src/object.ts
-var import_zod = require("zod");
-var EsormDatabase = class {
-  connection;
-  routes;
-  constructor(options) {
-    this.connection = options.connection, this.routes = options.routes;
-  }
-  async getOne(key, query) {
-    const qb = this.connection.selectFrom(key).selectAll();
-    applyEsormQueryToQB(qb, query);
-    return qb.executeTakeFirstOrThrow();
-  }
-  async getMany(key, query) {
-    const qb = this.connection.selectFrom(key).selectAll();
-    applyEsormQueryToQB(qb, query);
-    return qb.execute();
-  }
-  async insert(key, objects) {
-    await this.connection.insertInto(key).values(objects).execute();
-  }
-  async delete(key, objects) {
-  }
-  getRoutes() {
-    return Object.entries(this.routes).map(([key, config]) => ({
-      path: `/${key}/get-many`,
-      validator: (input) => input,
-      handler: (query) => this.getMany(key)
-    }));
-  }
-};
-var EsormTable = class {
-  name;
-  columns;
-  constructor(options) {
-    this.name = options.name;
-    this.columns = options.columns;
-  }
-  async getOne(query) {
-  }
-};
-var EsormColumn = class {
-  type;
-  validator;
-  constructor(type) {
-    this.type = type;
-    this.validator = EsormColumnType[type].validator;
-  }
-};
-var EsormColumnType = {
-  int4: { validator: import_zod.z.number().int() },
-  int8: { validator: import_zod.z.number().int() },
-  float4: { validator: import_zod.z.number().int() },
-  float8: { validator: import_zod.z.number().int() },
-  bool: { validator: import_zod.z.boolean() },
-  text: { validator: import_zod.z.string() },
-  timestamptz: { validator: import_zod.z.string().datetime() }
-};
-
-// src/router.ts
-var import_hono = require("hono");
-var EsormRoute = class {
-  constructor() {
-  }
-};
-var EsormRouter = class {
-  app;
-  db;
-  constructor(options) {
-    this.app = new import_hono.Hono();
-    this.db = options.db;
-    Object.entries(this.db.routes).forEach(([key, path]) => {
-      this.app.post(`/${key}/get-many`, (c) => {
-        const input = c.req.json();
-        const result = this.db.getMany(key, input);
-        return c.json({
-          data: result
-        });
-      });
-    });
-  }
-};
-
-// src/esorm.ts
-var import_cuid2 = require("@paralleldrive/cuid2");
-var Esorm = (schema, connection) => {
-  const db = connection;
+// src/v2.ts
+import { z } from "zod";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { inspect } from "util";
+import { createId } from "@paralleldrive/cuid2";
+var Esorm = async (params) => {
+  const client = await createClient(params.mongodb_url);
+  const db = client.db(params.mongodb_db);
+  const session = await client.startSession();
   const result = {
-    db,
-    schema,
-    get: async (type) => {
-      return await db.selectFrom(type).selectAll().orderBy("created").execute();
+    start: () => {
+      const app = new Hono();
+      app.post(`/api/entity`, async (c) => {
+        const body = await c.req.json();
+        console.log("REQ", body);
+        const data = await (async () => {
+          if (body.action === "get-many")
+            return await result.getMany(body);
+          if (body.action === "create-one")
+            return await result.createEntity(body.type, body.data);
+        })();
+        return c.json({ data });
+      });
+      app.routes.forEach((route) => {
+        console.log("API ROUTE: ", route.method, route.path);
+      });
+      serve(
+        {
+          fetch: app.fetch,
+          port: params.port
+        },
+        () => console.log(`ESORM server is running on port ${params.port}`)
+      );
     },
-    create: async (type, data) => {
-      const record = {
-        id: (0, import_cuid2.createId)(),
-        created: Date.now(),
-        updated: Date.now(),
-        data
+    createEntity: async (type, obj) => {
+      await result.apply_operation({
+        operation: "create",
+        type,
+        id: createId(),
+        data: obj
+      });
+    },
+    getOne: async (type, id) => {
+      return await db.collection(type).findOne({ _id: id });
+    },
+    getMany: async (query) => {
+      const serialize = (target, condition) => {
+        if (condition === void 0)
+          return target;
+        if (condition.operator === "and")
+          target["$and"] = condition.conditions.map((x) => serialize({}, x));
+        else if (condition.operator === "or")
+          target["$or"] = condition.conditions.map((x) => serialize({}, x));
+        else if (condition.operator === "=")
+          target[condition.column] = { $eq: condition.value };
+        else if (condition.operator === "!=")
+          target[condition.column] = { $not: { $eq: condition.value } };
+        else if (condition.operator === "in")
+          target[condition.column] = { $in: condition.value };
+        return target;
       };
-      await db.insertInto(type).values([record]).execute();
+      const filter = serialize({}, query.query);
+      console.log(inspect(filter, { showHidden: false, depth: null, colors: true }));
+      return await db.collection(query.type).find(filter).toArray();
     },
-    /** Apply one operation */
-    apply_operation: async (db2, operation) => {
-      console.log("APPLY", operation);
+    apply_operation: async (operation) => {
       if (operation.operation === "create") {
-        const record = {
-          id: operation.id,
-          created: Date.now(),
-          updated: Date.now(),
-          data: {}
-        };
-        await db2.insertInto(operation.type).values([record]).execute();
-      }
-      if (operation.operation === "delete") {
-        await db2.deleteFrom(operation.type).where("id", "=", operation.id).executeTakeFirst();
+        await db.collection(operation.type).insertOne({ ...operation.data, _id: operation.id });
       }
       if (operation.operation === "update") {
-        if (operation.path.length === 0)
-          return;
-        const item = await db2.selectFrom(operation.type).where("id", "=", operation.id).select("data").executeTakeFirstOrThrow();
-        let current = item.data;
-        let p = operation.path.slice(1);
-        let k = operation.path.at(-1);
-        for (const key of p) {
-          current = typeof current === "object" ? current[key] : void 0;
-        }
-        if (typeof current === "object") {
-          current[k] = operation.value;
-        }
-        await db2.updateTable(operation.type).where("id", "=", operation.id).set("data", item.data).execute();
+        await db.collection(operation.type).updateOne(
+          { _id: operation.id },
+          {
+            $set: { [operation.column]: operation.value }
+          }
+        );
       }
-      return;
+      if (operation.operation === "delete") {
+        await db.collection(operation.type).deleteOne({ _id: operation.id });
+      }
     },
-    /** Apply many operations */
     apply_operations: async (operations) => {
-      await db.transaction().execute(async (db2) => {
+      await session.withTransaction(async () => {
         for (const operation of operations) {
-          await result.apply_operation(db2, operation);
+          await result.apply_operation(operation);
         }
       });
     },
-    _type_db: void 0,
-    _type_schema: void 0
+    _SCHEMATYPE: void 0
   };
   return result;
+};
+var EsormTypes = {
+  string: { schema: z.string() },
+  number: { schema: z.number() },
+  boolean: { schema: z.boolean() }
+};
+
+// src/query.ts
+var EsormQueryBuilder = {
+  where: (column, operator, value) => {
+    const condition = {
+      operator,
+      column,
+      value
+    };
+    return condition;
+  },
+  and: (...conditions) => ({ operator: "and", conditions }),
+  or: (...conditions) => ({ operator: "or", conditions })
+};
+
+// src/client.ts
+import { makeAutoObservable, runInAction } from "mobx";
+import { createEffect, onCleanup } from "solid-js";
+var EsormClient = () => {
+  const req = async (body) => {
+    const response = await fetch("/api/entity", {
+      method: "post",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (response.ok) {
+      const json = await response.json();
+      return json.data;
+    }
+  };
+  const cache = {
+    operationsCommitting: [],
+    // Operations that are local that are being committed
+    operationsLocal: []
+    // Operations that are local that are not yet being committed
+  };
+  const update = async () => {
+    if (cache.operationsLocal.length) {
+      console.log("Pushing Updates...");
+      cache.operationsCommitting = cache.operationsLocal;
+      cache.operationsLocal = [];
+      await req({
+        operation: "operations",
+        operations: cache.operationsCommitting
+      });
+    }
+    setTimeout(update, 1e3);
+  };
+  update();
+  const client = {
+    createOne: async (type, data) => {
+      const response = await fetch("/api/entity", {
+        method: "post",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create-one",
+          type,
+          data
+        })
+      });
+      if (response.ok) {
+        const json = await response.json();
+        return json.data;
+      }
+    },
+    getMany: async (options) => {
+      var _a;
+      const response = await fetch("/api/entity", {
+        method: "post",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "get-many",
+          type: options.type,
+          query: (_a = options.query) == null ? void 0 : _a.call(options, EsormQueryBuilder),
+          sort: options.sort,
+          limit: options.limit,
+          offset: options.offset
+        })
+      });
+      if (response.ok) {
+        const json = await response.json();
+        return json.data;
+      }
+    },
+    createQuery: (options) => {
+      const state = makeAutoObservable({
+        isLoading: true,
+        isError: false,
+        data: [],
+        success: (data) => {
+          console.log("QUERY SUCCESS");
+          state.isLoading = false;
+          state.isError = false;
+          state.data = data;
+        },
+        error: () => {
+          state.isLoading = false;
+          state.isError = true;
+        }
+      });
+      createEffect(async () => {
+        let isCurrent = true;
+        onCleanup(() => isCurrent = false);
+        const o = options();
+        const result = await client.getMany(o);
+        if (o.limit) {
+          state.success(result.slice(0, o.limit));
+        } else {
+          state.success(result);
+        }
+      });
+      return state;
+    },
+    setEntityValue: (type, target, key, value) => {
+      runInAction(() => {
+        target[key] = value;
+      });
+      cache.operationsLocal.push({
+        operation: "update",
+        type,
+        id: target._id,
+        column: key,
+        value
+      });
+    }
+  };
+  return client;
 };
 
 // src/index.ts
@@ -195,14 +249,10 @@ var TestFunction = () => {
 console.log("Arg 0", process.argv[0]);
 console.log("Arg 1", process.argv[1]);
 console.log("Arg 2", process.argv[2]);
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
+export {
   Esorm,
-  EsormColumn,
-  EsormDatabase,
-  EsormObject,
-  EsormRoute,
-  EsormRouter,
+  EsormClient,
+  EsormTypes,
   TestFunction
-});
+};
 //# sourceMappingURL=index.js.map

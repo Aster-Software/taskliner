@@ -1,28 +1,39 @@
-import { SelectQueryBuilder } from "kysely";
+export type EsormQueryOperator = "=" | "in" | "<" | "<=" | ">" | ">=" | "!=";
+export type EsormQueryCondition = {
+  operator: EsormQueryOperator;
+  column: string;
+  value: any;
+};
+export type EsormQuery =
+  | undefined
+  | EsormQueryCondition
+  | {
+      operator: "and";
+      conditions: EsormQuery[];
+    }
+  | {
+      operator: "or";
+      conditions: EsormQuery[];
+    };
 
-export type EsormQueryLine = {
-    operator: "="
-    column: string;
-    value: any;
-} | {
-    operator: "or";
-    clauses: EsormQueryLine[];
-} | {
-    operator: "and",
-    clauses: EsormQueryLine[];
+export type EsormQueryOptions = {
+  type: string;
+  query?: EsormQuery;
+  sort?: string | [string, "asc" | "desc"] | [string, "asc" | "desc"][];
+  limit?: number;
+  offset?: number;
 };
 
-// TODO: Add support for arrays of query lines
-export type EsormQuery = void | EsormQueryLine; // EsormQueryLine | EsormQueryLine[];
+export const EsormQueryBuilder = {
+  where: (column: string, operator: EsormQueryOperator, value: any) => {
+    const condition: EsormQueryCondition = {
+      operator,
+      column,
+      value,
+    };
 
-// TODO: Add support for AND operators
-// TODO: Add support for OR operators
-export const applyEsormQueryToQB = <T extends SelectQueryBuilder<any, any, any>>(qb: T, query: EsormQuery) => {
-    if (query) {
-        if (query.operator === "=") {
-            qb.where(query.column, query.operator, query.value)
-        }
-    }
-    
-    return qb;
-}
+    return condition;
+  },
+  and: (...conditions: EsormQuery[]) => ({ operator: "and" as const, conditions }),
+  or: (...conditions: EsormQuery[]) => ({ operator: "or" as const, conditions }),
+};
