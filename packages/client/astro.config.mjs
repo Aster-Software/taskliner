@@ -22,6 +22,10 @@ export default defineConfig({
         "/api": {
           target: "http://localhost:4000",
         },
+        "/ws": {
+          ws: true,
+          target: "http://localhost:8080",
+        },
       },
     },
     resolve: {

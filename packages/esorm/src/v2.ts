@@ -1,12 +1,14 @@
 import { ObjectId } from "mongodb";
 import { createClient as createMongoDBClient } from "./mongo";
-import { util, z } from "zod";
+import { set, util, z } from "zod";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { EsormQuery, EsormQueryOptions } from "./query";
 import { inspect } from "util";
 import { createId } from "@paralleldrive/cuid2";
 import { EsormOperation } from "./operation";
+import { EsormBatchOperation } from "./batch";
+import { WebSocket, WebSocketServer } from "ws";
 
 type EsormPropertyType = "string" | "number" | "boolean";
 type EsormProperty = { schema: z.ZodTypeAny };
@@ -26,6 +28,23 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
 
   const session = await client.startSession();
 
+  const psm = createPubSubManager<{
+    "entity-create": { db: string; collection: string; document: any };
+    "entity-update": { db: string; collection: string; document: any };
+    "entity-delete": { db: string; collection: string; document: any };
+  }>();
+
+  db.watch([], { fullDocument: "updateLookup" }).on("change", (e) => {
+    console.log(e);
+
+    const ee = e as any; // Be free, little birdy (event)
+    const payload = { db: ee.ns.db, collection: ee.ns.coll, document: ee.fullDocument };
+
+    if (e.operationType === "create") psm.emit("entity-create", payload);
+    if (e.operationType === "update") psm.emit("entity-update", payload);
+    if (e.operationType === "delete") psm.emit("entity-delete", payload);
+  });
+
   type CollectionKey = keyof T & string;
 
   type SchemaType = T;
@@ -39,11 +58,13 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
       app.post(`/api/entity`, async (c) => {
         const body = await c.req.json();
 
-        console.log("REQ", body);
+        console.log("REQ");
+        log(body);
 
         const data = await (async () => {
           if (body.action === "get-many") return await result.getMany(body);
           if (body.action === "create-one") return await result.createEntity(body.type, body.data);
+          if (body.action === "apply-operation") return await result.applyBatchOperation(body.operations);
         })();
 
         return c.json({ data });
@@ -60,6 +81,28 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
         },
         () => console.log(`ESORM server is running on port ${params.port}`),
       );
+
+      // Websockets
+      const wss = new WebSocketServer(
+        {
+          port: 8080,
+        },
+        () => {
+          console.log("Websocket server started on port 8080");
+        },
+      );
+
+      wss.on("connection", function connection(ws) {
+        ws.on("error", console.error);
+
+        ws.on("message", function message(data) {
+          const json = JSON.parse(data.toString());
+
+          console.log("MESSAGE", json);
+        });
+
+        ws.send(JSON.stringify({ type: "Hello World" }));
+      });
     },
 
     createEntity: async <K extends keyof T & string>(type: K, obj: EntityType<K>) => {
@@ -88,7 +131,7 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
 
       const filter = serialize({}, query.query);
 
-      console.log(inspect(filter, { showHidden: false, depth: null, colors: true }));
+      log(filter);
 
       return await db.collection(query.type).find(filter).toArray();
     },
@@ -121,6 +164,28 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
       });
     },
 
+    applyBatchOperation: async (operation: EsormBatchOperation) => {
+      console.log("Applying Operations...");
+
+      for (const type in operation.types) {
+        const t = operation.types[type];
+
+        for (const [id, entry] of Object.entries(t)) {
+          if (entry.action === "create") {
+            await db.collection(type).insertOne({ ...entry.data, _id: id as any });
+          }
+
+          if (entry.action === "update") {
+            await db.collection(type).updateOne({ _id: id as any }, { $set: entry.data });
+          }
+
+          if (entry.action === "delete") {
+            await db.collection(type).deleteOne({ _id: id as any });
+          }
+        }
+      }
+    },
+
     _SCHEMATYPE: undefined as T,
   };
 
@@ -131,4 +196,41 @@ export const EsormTypes = {
   string: { schema: z.string() },
   number: { schema: z.number() },
   boolean: { schema: z.boolean() },
+};
+
+const log = (x) => console.log(inspect(x, { showHidden: false, depth: null, colors: true }));
+
+const createPubSubManager = <T extends Record<string, any>>() => {
+  const subscriptions = create2DSet();
+
+  return {
+    emit: <Key extends keyof T & string>(e: Key, args: T[Key]) => {
+      subscriptions.values(e).forEach((fn) => fn(args));
+    },
+    subscribe: <Key extends keyof T & string>(e: Key, callback: (args: T[Key]) => {}) => {
+      const obj = [e, callback];
+
+      subscriptions.add(e, obj);
+
+      return () => subscriptions.delete(e, obj);
+    },
+  };
+};
+
+const create2DSet = () => {
+  const map = {} as Record<string, Set<any>>;
+
+  return {
+    values: (scope: string) => [...(map[scope] ?? [])],
+    add: (scope: string, obj: any) => {
+      if (map[scope] === undefined) map[scope] = new Set();
+
+      map[scope].add(obj);
+    },
+    delete: (scope: string, obj: any) => {
+      if (map[scope] === undefined) map[scope] = new Set();
+
+      map[scope].delete(obj);
+    },
+  };
 };
