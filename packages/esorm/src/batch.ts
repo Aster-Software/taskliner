@@ -1,9 +1,15 @@
+import merge from "merge";
+
 export const createBatchOperationRecord = () => {
   const operation: EsormBatchOperation = {
     types: {},
   };
 
   return operation;
+};
+
+export const appendBatchOperationRecord = (target: EsormBatchOperation, update: EsormBatchOperation) => {
+  merge.recursive(target, update);
 };
 
 export const checkDoesBatchOperationRecordHaveChanges = (operation: EsormBatchOperation) => {

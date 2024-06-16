@@ -19,24 +19,130 @@ import { z } from "zod";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { inspect } from "util";
-import { createId } from "@paralleldrive/cuid2";
+
+// src/utils.ts
+var deterministicStringify = (input) => {
+  const deterministicReplacer = (_, v) => typeof v !== "object" || v === null || Array.isArray(v) ? v : Object.fromEntries(Object.entries(v).sort(([ka], [kb]) => ka < kb ? -1 : ka > kb ? 1 : 0));
+  return JSON.stringify(input, deterministicReplacer);
+};
+var create2DRecord = () => {
+  const map = {};
+  return {
+    values: (scope) => Object.values(map[scope]),
+    add: (scope, key, obj) => {
+      if (map[scope] === void 0)
+        map[scope] = {};
+      map[scope][key] = obj;
+    },
+    delete: (scope, key) => {
+      if (map[scope] === void 0)
+        map[scope] = {};
+      delete map[scope][key];
+    }
+  };
+};
+
+// src/server/server-socket.ts
 import { WebSocketServer } from "ws";
+
+// src/batch.ts
+import merge from "merge";
+var createBatchOperationRecord = () => {
+  const operation = {
+    types: {}
+  };
+  return operation;
+};
+var checkDoesBatchOperationRecordHaveChanges = (operation) => {
+  return Object.keys(operation.types).length > 0;
+};
+
+// src/server/server-socket.ts
+var ServerSocketModule = class {
+  options;
+  wss;
+  constructor(options) {
+    this.options = options;
+    this.wss = new WebSocketServer(
+      {
+        port: 8080
+      },
+      () => {
+        console.log("Websocket server started on port 8080");
+      }
+    );
+    this.wss.on("connection", (ws) => {
+      const state = {
+        subscriptions: create2DRecord(),
+        updates: createBatchOperationRecord(),
+        disposers: []
+      };
+      const send = (action, data) => {
+        const json = JSON.stringify({ action, data });
+        ws.send(json);
+      };
+      const dispose = this.options.watcher.subscribe((action, payload) => {
+        const patch = createBatchOperationRecord();
+        patch.types[payload.collection] = {
+          [payload.document._id]: {
+            action,
+            data: payload.document
+          }
+        };
+        send("patch", patch);
+      });
+      ws.on("message", (data) => {
+        const json = JSON.parse(data.toString());
+        console.log("MESSAGE", json);
+        if (json.action === "subscribe") {
+          const key = deterministicStringify(json.data.query);
+          console.log("WS: Subscribe", key);
+          state.subscriptions.add(json.data.type, key, json.data.query);
+        }
+        if (json.action === "unsubscribe") {
+          const key = deterministicStringify(json.data.query);
+          console.log("WS: Unsubscribe", key);
+          state.subscriptions.delete(json.data.type, key);
+        }
+      });
+      ws.on("close", () => {
+        dispose();
+      });
+      ws.on("error", console.error);
+      ws.send(JSON.stringify({ type: "Hello World" }));
+    });
+  }
+};
+
+// src/server/server-watcher.ts
+var ServerWatcherModule = class {
+  options;
+  listeners = /* @__PURE__ */ new Set();
+  constructor(options) {
+    this.options = options;
+    this.options.db.watch([], { fullDocument: "updateLookup" }).on("change", (e) => {
+      console.log(e);
+      const ee = e;
+      const payload = { db: ee.ns.db, collection: ee.ns.coll, document: ee.fullDocument };
+      if (e.operationType === "create")
+        this.listeners.forEach((l) => l("create", payload));
+      if (e.operationType === "update")
+        this.listeners.forEach((l) => l("update", payload));
+      if (e.operationType === "delete")
+        this.listeners.forEach((l) => l("delete", payload));
+    });
+  }
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+};
+
+// src/v2.ts
 var Esorm = async (params) => {
   const client = await createClient(params.mongodb_url);
-  const db = client.db(params.mongodb_db);
   const session = await client.startSession();
-  const psm = createPubSubManager();
-  db.watch([], { fullDocument: "updateLookup" }).on("change", (e) => {
-    console.log(e);
-    const ee = e;
-    const payload = { db: ee.ns.db, collection: ee.ns.coll, document: ee.fullDocument };
-    if (e.operationType === "create")
-      psm.emit("entity-create", payload);
-    if (e.operationType === "update")
-      psm.emit("entity-update", payload);
-    if (e.operationType === "delete")
-      psm.emit("entity-delete", payload);
-  });
+  const db = client.db(params.mongodb_db);
   const result = {
     start: () => {
       const app = new Hono();
@@ -44,11 +150,10 @@ var Esorm = async (params) => {
         const body = await c.req.json();
         console.log("REQ");
         log(body);
+        const user = await params.authenticate();
         const data = await (async () => {
           if (body.action === "get-many")
-            return await result.getMany(body);
-          if (body.action === "create-one")
-            return await result.createEntity(body.type, body.data);
+            return await result.getManyWithAuthorization(body, user);
           if (body.action === "apply-operation")
             return await result.applyBatchOperation(body.operations);
         })();
@@ -64,30 +169,10 @@ var Esorm = async (params) => {
         },
         () => console.log(`ESORM server is running on port ${params.port}`)
       );
-      const wss = new WebSocketServer(
-        {
-          port: 8080
-        },
-        () => {
-          console.log("Websocket server started on port 8080");
-        }
-      );
-      wss.on("connection", function connection(ws) {
-        ws.on("error", console.error);
-        ws.on("message", function message(data) {
-          const json = JSON.parse(data.toString());
-          console.log("MESSAGE", json);
-        });
-        ws.send(JSON.stringify({ type: "Hello World" }));
-      });
+      const watcher = new ServerWatcherModule({ db });
+      const socketModule = new ServerSocketModule({ db, watcher });
     },
     createEntity: async (type, obj) => {
-      await result.apply_operation({
-        operation: "create",
-        type,
-        id: createId(),
-        data: obj
-      });
     },
     getOne: async (type, id) => {
       return await db.collection(type).findOne({ _id: id });
@@ -110,30 +195,13 @@ var Esorm = async (params) => {
       };
       const filter = serialize({}, query.query);
       log(filter);
-      return await db.collection(query.type).find(filter).toArray();
+      const items = await db.collection(query.type).find(filter).limit(1e4).toArray();
+      return items;
     },
-    apply_operation: async (operation) => {
-      if (operation.operation === "create") {
-        await db.collection(operation.type).insertOne({ ...operation.data, _id: operation.id });
-      }
-      if (operation.operation === "update") {
-        await db.collection(operation.type).updateOne(
-          { _id: operation.id },
-          {
-            $set: { [operation.column]: operation.value }
-          }
-        );
-      }
-      if (operation.operation === "delete") {
-        await db.collection(operation.type).deleteOne({ _id: operation.id });
-      }
-    },
-    apply_operations: async (operations) => {
-      await session.withTransaction(async () => {
-        for (const operation of operations) {
-          await result.apply_operation(operation);
-        }
-      });
+    getManyWithAuthorization: async (query, user) => {
+      const itemsRaw = await result.getMany(query);
+      const itemsFiltered = itemsRaw.filter((x) => params.authorize[query.type](x, user));
+      return itemsFiltered;
     },
     applyBatchOperation: async (operation) => {
       console.log("Applying Operations...");
@@ -162,35 +230,13 @@ var EsormTypes = {
   boolean: { schema: z.boolean() }
 };
 var log = (x) => console.log(inspect(x, { showHidden: false, depth: null, colors: true }));
-var createPubSubManager = () => {
-  const subscriptions = create2DSet();
-  return {
-    emit: (e, args) => {
-      subscriptions.values(e).forEach((fn) => fn(args));
-    },
-    subscribe: (e, callback) => {
-      const obj = [e, callback];
-      subscriptions.add(e, obj);
-      return () => subscriptions.delete(e, obj);
-    }
-  };
-};
-var create2DSet = () => {
-  const map = {};
-  return {
-    values: (scope) => [...map[scope] ?? []],
-    add: (scope, obj) => {
-      if (map[scope] === void 0)
-        map[scope] = /* @__PURE__ */ new Set();
-      map[scope].add(obj);
-    },
-    delete: (scope, obj) => {
-      if (map[scope] === void 0)
-        map[scope] = /* @__PURE__ */ new Set();
-      map[scope].delete(obj);
-    }
-  };
-};
+
+// src/client.ts
+import { makeAutoObservable as makeAutoObservable4, observe as observe2, runInAction as runInAction3 } from "mobx";
+import { createEffect, onCleanup } from "solid-js";
+
+// src/client/client-query.ts
+import { makeAutoObservable, runInAction, untracked } from "mobx";
 
 // src/query.ts
 var EsormQueryBuilder = {
@@ -205,205 +251,6 @@ var EsormQueryBuilder = {
   and: (...conditions) => ({ operator: "and", conditions }),
   or: (...conditions) => ({ operator: "or", conditions })
 };
-
-// src/client.ts
-import { makeAutoObservable, runInAction, untracked } from "mobx";
-import { createEffect, onCleanup } from "solid-js";
-
-// src/batch.ts
-var createBatchOperationRecord = () => {
-  const operation = {
-    types: {}
-  };
-  return operation;
-};
-var checkDoesBatchOperationRecordHaveChanges = (operation) => {
-  return Object.keys(operation.types).length > 0;
-};
-
-// src/client.ts
-var EsormClient = () => {
-  createSocket({
-    url: "/ws",
-    onConnect: (ws) => {
-      ws.addEventListener("open", () => {
-        ws.send(JSON.stringify({ action: "subscribe", data: "Hello World" }));
-        ws.addEventListener("message", (e) => {
-          const json = JSON.parse(e.data);
-          console.log("WS: Message", json);
-        });
-      });
-    }
-  });
-  const req = async (body) => {
-    const response = await fetch("/api/entity", {
-      method: "post",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    if (response.ok) {
-      const json = await response.json();
-      return json.data;
-    }
-  };
-  const cache = makeAutoObservable({
-    entities: /* @__PURE__ */ new Map(),
-    queries: {},
-    updateEntities: (type, entities) => {
-      entities.forEach((entity) => {
-        const key = `${type}|${entity._id}`;
-        cache.entities.set(key, entity);
-      });
-    }
-  });
-  const manager = {
-    operationsCommitting: createBatchOperationRecord(),
-    // Operations that are local that are being committed
-    operationsLocal: createBatchOperationRecord()
-    // Operations that are local that are not yet being committed
-  };
-  const update = async () => {
-    if (checkDoesBatchOperationRecordHaveChanges(manager.operationsLocal)) {
-      console.log("Pushing Updates...", manager.operationsLocal);
-      manager.operationsCommitting = manager.operationsLocal;
-      manager.operationsLocal = createBatchOperationRecord();
-      await req({
-        action: "apply-operation",
-        operations: manager.operationsCommitting
-      });
-    }
-    setTimeout(update, 1e3);
-  };
-  update();
-  const getOrCreateQuery = (options) => {
-    const query = options.query(EsormQueryBuilder);
-    const key = deterministicStringify({
-      ...options,
-      query
-    });
-    const create = () => {
-      console.log("Creating Query", key);
-      const state = makeAutoObservable({
-        key,
-        count: 1,
-        isLoading: true,
-        isError: false,
-        get data() {
-          const r = [...cache.entities].filter(([key2, value]) => {
-            if (!key2.startsWith(options.type))
-              return false;
-            return query ? checkEntityPassesQuery(query, value) : true;
-          }).map(([key2, value]) => value);
-          return r;
-        },
-        start: async () => {
-          runInAction(() => {
-            state.isLoading = true;
-            state.isError = false;
-          });
-          const result = await client.getMany(options);
-          state.success(result);
-          cache.updateEntities(options.type, result);
-        },
-        success: (data) => {
-          console.log("QUERY SUCCESS");
-          state.isLoading = false;
-          state.isError = false;
-        },
-        error: () => {
-          state.isLoading = false;
-          state.isError = true;
-        },
-        dispose: () => {
-          console.log("DISPOSING QUERY (?)");
-          cache.queries[key].count--;
-          if (cache.queries[key].count === 0) {
-            console.log("EMPTY QUERY. REMOVING...");
-            delete cache.queries[key];
-          }
-        }
-      });
-      untracked(() => state.start());
-      return state;
-    };
-    runInAction(() => {
-      if (cache.queries[key] === void 0) {
-        cache.queries[key] = create();
-      } else {
-        cache.queries[key].count++;
-      }
-    });
-    return cache.queries[key];
-  };
-  const client = {
-    createOne: async (type, data) => {
-      const response = await fetch("/api/entity", {
-        method: "post",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create-one",
-          type,
-          data
-        })
-      });
-      if (response.ok) {
-        const json = await response.json();
-        return json.data;
-      }
-    },
-    getMany: async (options) => {
-      const response = await fetch("/api/entity", {
-        method: "post",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "get-many",
-          type: options.type,
-          query: options.query?.(EsormQueryBuilder),
-          sort: options.sort
-        })
-      });
-      if (response.ok) {
-        const json = await response.json();
-        return json.data;
-      } else {
-        throw new Error(response.statusText);
-      }
-    },
-    /** For use with SolidJS */
-    createQuery: (getOptions) => {
-      const state = makeAutoObservable({
-        get query() {
-          console.log("GETTING");
-          const options = getOptions();
-          return getOrCreateQuery(options);
-        }
-      });
-      createEffect(() => {
-        const query = state.query;
-        onCleanup(() => query.dispose());
-      });
-      return state;
-    },
-    createEntityValue: (type, value) => {
-      cache.updateEntities(type, [value]);
-      s(manager.operationsLocal.types, type, (x) => x ?? {});
-      s(manager.operationsLocal.types[type], value._id, () => ({ action: "create", data: value }));
-    },
-    setEntityValue: (type, target, key, value) => {
-      runInAction(() => {
-        target[key] = value;
-      });
-      s(manager.operationsLocal.types, type, (x) => x ?? {});
-      s(manager.operationsLocal.types[type], target._id, (x) => x ?? { action: "update", data: {} });
-      s(manager.operationsLocal.types[type][target._id].data, key, () => value);
-    }
-  };
-  return client;
-};
-var s = (target, key, setter) => {
-  const t = target[key];
-  target[key] = setter(t);
-};
 var checkEntityPassesQuery = (query, entity) => {
   if (query.operator === "and")
     return query.conditions.every((condition) => checkEntityPassesQuery(condition, entity));
@@ -417,30 +264,294 @@ var checkEntityPassesQuery = (query, entity) => {
     return query.value.includes(entity[query.column]);
   return false;
 };
-var createSocket = (options) => {
-  let ws = null;
-  const reconnect = () => {
-    console.log("WS: Reconnecting");
-    ws = new WebSocket(options.url);
-    options.onConnect(ws);
-    ws.addEventListener("open", () => {
-      console.log("WS: Connected");
+
+// src/client/client-query.ts
+var ClientQueryModule = class {
+  entities = /* @__PURE__ */ new Map();
+  queries = {};
+  options;
+  constructor(options) {
+    makeAutoObservable(this);
+    this.options = options;
+  }
+  getMany = async (options) => {
+    const result = await this.options.apiDriver.reqEntity({
+      action: "get-many",
+      type: options.type,
+      query: options.query?.(EsormQueryBuilder),
+      sort: options.sort
     });
-    ws.addEventListener("close", () => {
+    return result;
+  };
+  getOrCreateQuery = (options) => {
+    const module = this;
+    const query = options.query(EsormQueryBuilder);
+    const key = deterministicStringify({
+      ...options,
+      query
+    });
+    const create = () => {
+      console.log("Creating Query", key);
+      const state = makeAutoObservable({
+        key,
+        query,
+        count: 1,
+        isLoading: true,
+        isError: false,
+        get data() {
+          const r = [...module.entities].filter(([key2, value]) => {
+            if (!key2.startsWith(options.type))
+              return false;
+            return query ? checkEntityPassesQuery(query, value) : true;
+          }).map(([key2, value]) => value);
+          return r;
+        },
+        start: async () => {
+          runInAction(() => {
+            state.isLoading = true;
+            state.isError = false;
+          });
+          try {
+            const result = await this.getMany(options);
+            state.success(result);
+            this.updateEntities(options.type, result);
+          } catch (e) {
+            state.error();
+          }
+        },
+        success: (data) => {
+          console.log("QUERY SUCCESS");
+          state.isLoading = false;
+          state.isError = false;
+        },
+        error: () => {
+          state.isLoading = false;
+          state.isError = true;
+        },
+        dispose: () => {
+          console.log("DISPOSING QUERY (?)");
+          this.queries[key].count--;
+          if (this.queries[key].count === 0) {
+            console.log("EMPTY QUERY. REMOVING...");
+            delete this.queries[key];
+          }
+        }
+      });
+      untracked(() => state.start());
+      return state;
+    };
+    runInAction(() => {
+      if (this.queries[key] === void 0) {
+        this.queries[key] = create();
+      } else {
+        this.queries[key].count++;
+      }
+    });
+    return this.queries[key];
+  };
+  updateEntities = (type, entities) => {
+    entities.forEach((entity) => {
+      const key = `${type}|${entity._id}`;
+      this.entities.set(key, entity);
+    });
+  };
+  applyOperation = (patch) => {
+    Object.entries(patch.types).forEach(([type, record]) => {
+      Object.entries(record).forEach(([id, entry]) => {
+        const k = `${type}|${id}`;
+        if (entry.action === "delete") {
+          this.entities.delete(k);
+        } else {
+          const target = this.entities.get(k);
+          if (target) {
+            Object.entries(entry.data).forEach(([key, value]) => {
+              console.log("SET", key, value);
+              target[key] = value;
+            });
+          } else {
+            console.log("CREATE", entry.data);
+            this.entities.set(k, entry.data);
+          }
+        }
+      });
+    });
+  };
+};
+
+// src/client/client-socket.ts
+import { makeAutoObservable as makeAutoObservable2, observe } from "mobx";
+var ClientSocketModule = class {
+  options;
+  ws;
+  constructor(options) {
+    this.options = options;
+    observe(options.queryModule.queries, (changes) => {
+      if (this.ws.readyState === WebSocket.OPEN) {
+        if (changes.type === "add")
+          this.subscribeToQuery(changes.newValue.query);
+        if (changes.type === "remove")
+          this.unsubscribeFromQuery(changes.oldValue.query);
+      }
+    });
+    this.reconnect();
+    this.loop();
+    makeAutoObservable2(this);
+  }
+  loop() {
+    if (this.ws.readyState === WebSocket.CLOSED)
+      this.reconnect();
+    setTimeout(() => this.loop(), 5e3);
+  }
+  reconnect() {
+    console.log("WS: Reconnecting");
+    this.ws = new WebSocket(this.options.url);
+    this.ws.addEventListener("open", () => {
+      console.log("WS: Connected");
+      this.send("test", "Hello World");
+      Object.values(this.options.queryModule.queries).forEach((query) => {
+        this.subscribeToQuery(query.query);
+      });
+    });
+    this.ws.addEventListener("close", () => {
       console.log("WS: Closed");
     });
+    this.ws.addEventListener("message", (e) => {
+      const json = JSON.parse(e.data);
+      console.log("WS: Message", json);
+      if (json.action === "patch") {
+        const data = json.data;
+        this.options.queryModule.applyOperation(data);
+        this.options.queryModule.applyOperation(this.options.operationsModule.operationsCommitting);
+        this.options.queryModule.applyOperation(this.options.operationsModule.operationsLocal);
+      }
+    });
+  }
+  send = (action, data) => {
+    const json = JSON.stringify({
+      action,
+      data
+    });
+    this.ws.send(json);
   };
-  const loop = () => {
-    if (ws.readyState === ws.CLOSED)
-      reconnect();
-    setTimeout(loop, 5e3);
-  };
-  reconnect();
-  loop();
+  subscribeToQuery = (query) => this.send("subscribe", { query });
+  unsubscribeFromQuery = (query) => this.send("unsubscribe", { query });
 };
-var deterministicStringify = (input) => {
-  const deterministicReplacer = (_, v) => typeof v !== "object" || v === null || Array.isArray(v) ? v : Object.fromEntries(Object.entries(v).sort(([ka], [kb]) => ka < kb ? -1 : ka > kb ? 1 : 0));
-  return JSON.stringify(input, deterministicReplacer);
+
+// src/client/client-operations.ts
+import { makeAutoObservable as makeAutoObservable3, runInAction as runInAction2 } from "mobx";
+var ClientOperationsModule = class {
+  operationsCommitting = createBatchOperationRecord();
+  // Operations that are local that are being committed
+  operationsLocal = createBatchOperationRecord();
+  // Operations that are local that are not yet being committed
+  options;
+  constructor(options) {
+    makeAutoObservable3(this);
+    this.options = options;
+    this.update();
+  }
+  update = async () => {
+    if (checkDoesBatchOperationRecordHaveChanges(this.operationsLocal)) {
+      console.log("Pushing Updates...", this.operationsLocal);
+      runInAction2(() => {
+        this.operationsCommitting = this.operationsLocal;
+        this.operationsLocal = createBatchOperationRecord();
+      });
+      await this.options.apiDriver.reqEntity({
+        action: "apply-operation",
+        operations: this.operationsCommitting
+      });
+      runInAction2(() => {
+        this.operationsCommitting = createBatchOperationRecord();
+      });
+    }
+    setTimeout(() => this.update(), 1e3);
+  };
+};
+
+// src/client/client-api-driver.ts
+var ClientApiDriver = class {
+  constructor() {
+  }
+  req = async (options) => {
+    const response = await fetch(options.url, {
+      method: "post",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options.body)
+    });
+    if (response.ok) {
+      const json = await response.json();
+      return json.data;
+    }
+  };
+  reqEntity = async (body) => this.req({ url: "/api/entity", body });
+};
+
+// src/client/client-utils.ts
+var set = (target, key, setter) => {
+  const t = target[key];
+  target[key] = setter(t);
+};
+
+// src/client.ts
+var EsormClient = () => {
+  const apiDriver = new ClientApiDriver();
+  const operationsModule = new ClientOperationsModule({ apiDriver });
+  const queryModule = new ClientQueryModule({ apiDriver });
+  const socketModule = new ClientSocketModule({
+    url: "/ws",
+    operationsModule,
+    queryModule
+  });
+  callbackPerObject({
+    target: queryModule.queries,
+    getKey: (x) => x.key,
+    onCallback: () => {
+    },
+    onCleanup: () => {
+    }
+  });
+  const client = {
+    apiDriver,
+    operationsModule,
+    queryModule,
+    socketModule,
+    /** For use with SolidJS */
+    createQuery: (getOptions) => {
+      const state = makeAutoObservable4({
+        get query() {
+          console.log("GETTING");
+          const options = getOptions();
+          return queryModule.getOrCreateQuery(options);
+        }
+      });
+      createEffect(() => {
+        const query = state.query;
+        onCleanup(() => query.dispose());
+      });
+      return state;
+    },
+    createEntityValue: (type, value) => {
+      queryModule.updateEntities(type, [value]);
+      set(operationsModule.operationsLocal.types, type, (x) => x ?? {});
+      set(operationsModule.operationsLocal.types[type], value._id, () => ({ action: "create", data: value }));
+    },
+    setEntityValue: (type, target, key, value) => {
+      runInAction3(() => {
+        target[key] = value;
+      });
+      set(operationsModule.operationsLocal.types, type, (x) => x ?? {});
+      set(operationsModule.operationsLocal.types[type], target._id, (x) => x ?? { action: "update", data: {} });
+      set(operationsModule.operationsLocal.types[type][target._id].data, key, () => value);
+    }
+  };
+  return client;
+};
+var callbackPerObject = (options) => {
+  const cache = /* @__PURE__ */ new Set();
+  observe2(options.target, (changes) => {
+    console.log({ changes });
+  });
 };
 
 // src/index.ts

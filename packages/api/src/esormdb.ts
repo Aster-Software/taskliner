@@ -1,7 +1,5 @@
 import { Esorm, EsormTypes } from "esorm";
-import { Environment } from "./core/Environment.js";
 import { config } from "dotenv";
-import { createId } from "@paralleldrive/cuid2";
 
 config();
 
@@ -30,6 +28,13 @@ export const esorm = await Esorm({
         status: EsormTypes.string,
       },
     },
+  },
+  authenticate: async () => {
+    return { id: "test-user" };
+  },
+  authorize: {
+    workspace: () => true,
+    task: () => true,
   },
 });
 

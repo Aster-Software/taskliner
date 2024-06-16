@@ -1,55 +1,28 @@
-import { ObjectId } from "mongodb";
 import { createClient as createMongoDBClient } from "./mongo";
-import { set, util, z } from "zod";
+import { z } from "zod";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { EsormQuery, EsormQueryOptions } from "./query";
 import { inspect } from "util";
-import { createId } from "@paralleldrive/cuid2";
-import { EsormOperation } from "./operation";
 import { EsormBatchOperation } from "./batch";
-import { WebSocket, WebSocketServer } from "ws";
+import { create2DSet } from "./utils";
+import { ServerSocketModule } from "./server/server-socket";
+import { ServerWatcherModule } from "./server/server-watcher";
+import { EntityType, EsormSchemaDefinition } from "./common/schema";
 
-type EsormPropertyType = "string" | "number" | "boolean";
-type EsormProperty = { schema: z.ZodTypeAny };
-type EsormPropertiesDefinition = Record<string, EsormProperty>;
-
-export type EsormSchemaDefinition = Record<
-  string,
-  {
-    relations: {};
-    properties: EsormPropertiesDefinition;
-  }
->;
-
-export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: number; mongodb_db: string; mongodb_url: string; schema: T }) => {
+export const Esorm = async <T extends EsormSchemaDefinition, XUser>(params: {
+  port: number;
+  mongodb_db: string;
+  mongodb_url: string;
+  schema: T;
+  authenticate: () => Promise<XUser>;
+  authorize: { [Key in keyof T]: (x: EntityType<T[Key]["properties"]>, user: XUser) => boolean };
+}) => {
   const client = await createMongoDBClient(params.mongodb_url);
+  const session = await client.startSession();
   const db = client.db(params.mongodb_db);
 
-  const session = await client.startSession();
-
-  const psm = createPubSubManager<{
-    "entity-create": { db: string; collection: string; document: any };
-    "entity-update": { db: string; collection: string; document: any };
-    "entity-delete": { db: string; collection: string; document: any };
-  }>();
-
-  db.watch([], { fullDocument: "updateLookup" }).on("change", (e) => {
-    console.log(e);
-
-    const ee = e as any; // Be free, little birdy (event)
-    const payload = { db: ee.ns.db, collection: ee.ns.coll, document: ee.fullDocument };
-
-    if (e.operationType === "create") psm.emit("entity-create", payload);
-    if (e.operationType === "update") psm.emit("entity-update", payload);
-    if (e.operationType === "delete") psm.emit("entity-delete", payload);
-  });
-
-  type CollectionKey = keyof T & string;
-
-  type SchemaType = T;
-  type EntityType<K extends keyof SchemaType> = Partial<{ [P in keyof SchemaType[K]["properties"]]: z.infer<SchemaType[K]["properties"][P]["schema"]> }>;
-  type FinalType = { [Key in keyof SchemaType]: EntityType<Key> };
+  type TKey = keyof T & string;
 
   const result = {
     start: () => {
@@ -59,11 +32,13 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
         const body = await c.req.json();
 
         console.log("REQ");
+
         log(body);
 
+        const user = await params.authenticate();
+
         const data = await (async () => {
-          if (body.action === "get-many") return await result.getMany(body);
-          if (body.action === "create-one") return await result.createEntity(body.type, body.data);
+          if (body.action === "get-many") return await result.getManyWithAuthorization(body, user);
           if (body.action === "apply-operation") return await result.applyBatchOperation(body.operations);
         })();
 
@@ -82,40 +57,22 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
         () => console.log(`ESORM server is running on port ${params.port}`),
       );
 
-      // Websockets
-      const wss = new WebSocketServer(
-        {
-          port: 8080,
-        },
-        () => {
-          console.log("Websocket server started on port 8080");
-        },
-      );
-
-      wss.on("connection", function connection(ws) {
-        ws.on("error", console.error);
-
-        ws.on("message", function message(data) {
-          const json = JSON.parse(data.toString());
-
-          console.log("MESSAGE", json);
-        });
-
-        ws.send(JSON.stringify({ type: "Hello World" }));
-      });
+      const watcher = new ServerWatcherModule({ db });
+      const socketModule = new ServerSocketModule({ db, watcher });
     },
 
-    createEntity: async <K extends keyof T & string>(type: K, obj: EntityType<K>) => {
-      await result.apply_operation({
-        operation: "create",
-        type,
-        id: createId(),
-        data: obj,
-      });
+    createEntity: async <K extends TKey>(type: K, obj: EntityType<T[K]["properties"]>) => {
+      //   await result.apply_operation({
+      //     operation: "create",
+      //     type,
+      //     id: createId(),
+      //     data: obj,
+      //   });
     },
-    getOne: async (type: CollectionKey, id: string) => {
+    getOne: async (type: TKey, id: string) => {
       return await db.collection(type).findOne({ _id: id as any });
     },
+
     getMany: async (query: EsormQueryOptions) => {
       const serialize = (target: any, condition?: EsormQuery) => {
         if (condition === undefined) return target;
@@ -133,35 +90,16 @@ export const Esorm = async <T extends EsormSchemaDefinition>(params: { port: num
 
       log(filter);
 
-      return await db.collection(query.type).find(filter).toArray();
+      const items = await db.collection(query.type).find(filter).limit(10000).toArray();
+
+      return items;
     },
 
-    apply_operation: async (operation: EsormOperation) => {
-      if (operation.operation === "create") {
-        await db.collection(operation.type).insertOne({ ...operation.data, _id: operation.id as any });
-      }
+    getManyWithAuthorization: async (query: EsormQueryOptions, user: XUser) => {
+      const itemsRaw = await result.getMany(query);
+      const itemsFiltered = itemsRaw.filter((x) => params.authorize[query.type](x as any, user));
 
-      if (operation.operation === "update") {
-        await db.collection(operation.type).updateOne(
-          { _id: operation.id as any },
-          {
-            $set: { [operation.column]: operation.value },
-          },
-        );
-      }
-
-      if (operation.operation === "delete") {
-        await db.collection(operation.type).deleteOne({ _id: operation.id as any });
-      }
-    },
-    apply_operations: async (operations: EsormOperation[]) => {
-      // TODO: This can be massively optimized by batching operations into three builk insert, update, and delete operations.
-
-      await session.withTransaction(async () => {
-        for (const operation of operations) {
-          await result.apply_operation(operation);
-        }
-      });
+      return itemsFiltered;
     },
 
     applyBatchOperation: async (operation: EsormBatchOperation) => {
@@ -213,24 +151,6 @@ const createPubSubManager = <T extends Record<string, any>>() => {
       subscriptions.add(e, obj);
 
       return () => subscriptions.delete(e, obj);
-    },
-  };
-};
-
-const create2DSet = () => {
-  const map = {} as Record<string, Set<any>>;
-
-  return {
-    values: (scope: string) => [...(map[scope] ?? [])],
-    add: (scope: string, obj: any) => {
-      if (map[scope] === undefined) map[scope] = new Set();
-
-      map[scope].add(obj);
-    },
-    delete: (scope: string, obj: any) => {
-      if (map[scope] === undefined) map[scope] = new Set();
-
-      map[scope].delete(obj);
     },
   };
 };
