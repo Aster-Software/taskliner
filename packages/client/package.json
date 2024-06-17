@@ -16,6 +16,7 @@
     "@astrojs/check": "^0.7.0",
     "@astrojs/node": "^8.2.5",
     "@astrojs/solid-js": "^4.2.0",
+    "@clerk/clerk-js": "^5.7.0",
     "@kobalte/core": "^0.13.1",
     "@pandacss/dev": "^0.40.1",
     "@paralleldrive/cuid2": "^2.2.2",

@@ -1,58 +1,5 @@
 import { z } from 'zod';
-
-type EsormQueryOperator = "=" | "in" | "<" | "<=" | ">" | ">=" | "!=";
-type EsormQueryCondition = {
-    operator: EsormQueryOperator;
-    column: string;
-    value: any;
-};
-type EsormQuery = undefined | EsormQueryCondition | {
-    operator: "and";
-    conditions: EsormQuery[];
-} | {
-    operator: "or";
-    conditions: EsormQuery[];
-};
-type EsormQueryOptions = {
-    type: string;
-    query?: EsormQuery;
-    sort?: string | [string, "asc" | "desc"] | [string, "asc" | "desc"][];
-    limit?: number;
-    offset?: number;
-};
-declare const EsormQueryBuilder: {
-    where: (column: string, operator: EsormQueryOperator, value: any) => EsormQueryCondition;
-    and: (...conditions: EsormQuery[]) => {
-        operator: "and";
-        conditions: EsormQuery[];
-    };
-    or: (...conditions: EsormQuery[]) => {
-        operator: "or";
-        conditions: EsormQuery[];
-    };
-};
-
-type EsormBatchOperation = {
-    types: Record<string, Record<string, {
-        action: "create" | "update" | "delete";
-        data: any;
-    }>>;
-};
-
-type EsormProperty = {
-    schema: z.ZodTypeAny;
-};
-type EsormPropertiesDefinition = Record<string, EsormProperty>;
-type EsormSchemaDefinition = Record<string, {
-    relations: {};
-    properties: EsormPropertiesDefinition;
-}>;
-type EsormBaseEntityType = {
-    _id: string;
-};
-type EntityType<T extends EsormPropertiesDefinition> = EsormBaseEntityType & Partial<{
-    [K in keyof T]: z.infer<T[K]["schema"]>;
-}>;
+import { c as EsormQueryBuilder, d as EsormQuery, b as EsormBatchOperation, E as EsormSchemaDefinition } from '../batch-CklXvhbI.js';
 
 type BaseSchema = {
     [key: string]: {
@@ -61,13 +8,17 @@ type BaseSchema = {
 };
 
 declare class ClientApiDriver {
-    constructor();
+    options: ClientApiDriverOptions;
+    constructor(options: ClientApiDriverOptions);
     req: (options: {
         url: string;
         body: any;
     }) => Promise<unknown>;
     reqEntity: (body: any) => Promise<unknown>;
 }
+type ClientApiDriverOptions = {
+    clientOptions: EsormClientOptions;
+};
 
 declare class ClientQueryModule<Schema extends BaseSchema> {
     entities: Map<string, any>;
@@ -145,7 +96,7 @@ type ClientSocketOptions<Schema extends BaseSchema> = {
 
 declare const EsormClient: <R extends {
     _SCHEMATYPE: EsormSchemaDefinition;
-}>() => {
+}>(clientOptions: EsormClientOptions) => {
     apiDriver: ClientApiDriver;
     operationsModule: ClientOperationsModule<BaseSchema>;
     queryModule: ClientQueryModule<{ [Key in keyof R["_SCHEMATYPE"]]: {
@@ -186,5 +137,6 @@ declare const EsormClient: <R extends {
         _id: string;
     } & Partial<{ [P_2 in keyof R["_SCHEMATYPE"][Key_3]["properties"]]: z.TypeOf<R["_SCHEMATYPE"][Key_3]["properties"][P_2]["schema"]>; }>)[K]) => void;
 };
+type EsormClientOptions = {};
 
-export { type EsormSchemaDefinition as E, type EntityType as a, type EsormQueryOptions as b, type EsormBatchOperation as c, EsormClient as d };
+export { EsormClient, type EsormClientOptions };

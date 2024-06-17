@@ -1,5 +1,11 @@
+import { EsormClientOptions } from "./client";
+
 export class ClientApiDriver {
-  constructor() {}
+  options: ClientApiDriverOptions;
+
+  constructor(options: ClientApiDriverOptions) {
+    this.options = options;
+  }
 
   req = async (options: { url: string; body: any }) => {
     const response = await fetch(options.url, {
@@ -17,3 +23,7 @@ export class ClientApiDriver {
 
   reqEntity = async (body: any) => this.req({ url: "/api/entity", body });
 }
+
+type ClientApiDriverOptions = {
+  clientOptions: EsormClientOptions;
+};

@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { BaseSchema } from "./client-utils";
-import { EsormBatchOperation, checkDoesBatchOperationRecordHaveChanges, createBatchOperationRecord } from "../batch";
+import { EsormBatchOperation, checkDoesBatchOperationRecordHaveChanges, createBatchOperationRecord } from "../common/batch";
 import { ClientApiDriver } from "./client-api-driver";
 
 export class ClientOperationsModule<FinalType extends BaseSchema> {

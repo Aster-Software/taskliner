@@ -1,23 +1,23 @@
 import { z } from "zod";
-import { EsormQuery, EsormQueryBuilder } from "./query";
+import { EsormQuery, EsormQueryBuilder } from "../common/query";
 import { makeAutoObservable, observe, runInAction } from "mobx";
 import { createEffect, onCleanup } from "solid-js";
-import { ClientQueryModule as ClientQueryModule } from "./client/client-query";
-import { deterministicStringify } from "./utils";
-import { ClientSocketModule } from "./client/client-socket";
-import { ClientOperationsModule } from "./client/client-operations";
-import { ClientApiDriver } from "./client/client-api-driver";
-import { set } from "./client/client-utils";
-import { EsormSchemaDefinition } from "./common/schema";
+import { ClientQueryModule as ClientQueryModule } from "./client-query";
+import { deterministicStringify } from "../common/utils";
+import { ClientSocketModule } from "./client-socket";
+import { ClientOperationsModule } from "./client-operations";
+import { ClientApiDriver } from "./client-api-driver";
+import { set } from "./client-utils";
+import { EsormSchemaDefinition } from "../common/schema";
 
-export const EsormClient = <R extends { _SCHEMATYPE: EsormSchemaDefinition }>() => {
+export const EsormClient = <R extends { _SCHEMATYPE: EsormSchemaDefinition }>(clientOptions: EsormClientOptions) => {
   type SchemaType = R["_SCHEMATYPE"];
   type BaseType = { _id: string };
   type EntityType<K extends keyof SchemaType> = BaseType &
     Partial<{ [P in keyof SchemaType[K]["properties"]]: z.infer<SchemaType[K]["properties"][P]["schema"]> }>;
   type FinalType = { [Key in keyof SchemaType]: EntityType<Key> };
 
-  const apiDriver = new ClientApiDriver();
+  const apiDriver = new ClientApiDriver({ clientOptions });
   const operationsModule = new ClientOperationsModule({ apiDriver });
   const queryModule = new ClientQueryModule<FinalType>({ apiDriver });
   const socketModule = new ClientSocketModule({
@@ -126,3 +126,5 @@ const callbackPerObject = <T>(options: { target: Record<string, T>; getKey: (o: 
     console.log({ changes });
   });
 };
+
+export type EsormClientOptions = {};

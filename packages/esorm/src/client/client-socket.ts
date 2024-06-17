@@ -1,8 +1,8 @@
 import { makeAutoObservable, observe } from "mobx";
 import { BaseSchema } from "./client-utils";
-import { EsormQuery } from "../query";
+import { EsormQuery } from "../common/query";
 import { ClientQueryModule } from "./client-query";
-import { EsormBatchOperation } from "../batch";
+import { EsormBatchOperation } from "../common/batch";
 import { ClientOperationsModule } from "./client-operations";
 
 export class ClientSocketModule<Schema extends BaseSchema> {

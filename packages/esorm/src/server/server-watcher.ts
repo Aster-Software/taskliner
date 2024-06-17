@@ -8,8 +8,6 @@ export class ServerWatcherModule {
     this.options = options;
 
     this.options.db.watch([], { fullDocument: "updateLookup" }).on("change", (e) => {
-      console.log(e);
-
       const ee = e as any; // Be free, little birdy (event)
       const payload = { db: ee.ns.db, collection: ee.ns.coll, document: ee.fullDocument };
 

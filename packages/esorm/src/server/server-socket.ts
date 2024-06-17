@@ -1,15 +1,19 @@
 import { WebSocketServer } from "ws";
-import { EsormQuery } from "../query";
-import { create2DRecord, create2DSet, deterministicStringify } from "../utils";
-import { createBatchOperationRecord } from "../batch";
+import { EsormQuery } from "../common/query";
+import { create2DRecord, deterministicStringify } from "../common/utils";
+import { createBatchOperationRecord } from "../common/batch";
 import { Db } from "mongodb";
 import { ServerWatcherModule } from "./server-watcher";
+import { EsormSchemaDefinition } from "../common/schema";
+import { EsormOptions } from "./server";
+import { EsormServerApi } from "./server-api";
+import { authorizeEntityForPermission } from "./server-authorization";
 
-export class ServerSocketModule {
-  options: ServerSocketModuleOptions;
+export class ServerSocketModule<T extends EsormSchemaDefinition, XSession> {
+  options: ServerSocketModuleOptions<T, XSession>;
   wss: WebSocketServer;
 
-  constructor(options: ServerSocketModuleOptions) {
+  constructor(options: ServerSocketModuleOptions<T, XSession>) {
     this.options = options;
 
     this.wss = new WebSocketServer(
@@ -21,11 +25,21 @@ export class ServerSocketModule {
       },
     );
 
-    this.wss.on("connection", (ws) => {
+    this.wss.on("connection", async (ws, req) => {
+      const getAuthorization = async (r: typeof req) => {
+        const cookies = req.headers.cookie.split(";").map((x) => x.trim());
+        const token = (cookies.find((x) => x.startsWith("__session=")) ?? "").slice(10);
+        const session = await options.esormOptions.authenticate(token);
+        const authorization = await options.esormOptions.authorize(session, this.options.api);
+
+        return authorization;
+      };
+
       const state = {
         subscriptions: create2DRecord<EsormQuery>(),
         updates: createBatchOperationRecord(),
         disposers: [] as (() => void)[],
+        authorization: await getAuthorization(req),
       };
 
       const send = (action, data) => {
@@ -34,20 +48,24 @@ export class ServerSocketModule {
         ws.send(json);
       };
 
-      const dispose = this.options.watcher.subscribe((action, payload) => {
-        const patch = createBatchOperationRecord();
+      const dispose = this.options.watcher.subscribe(async (action, payload) => {
+        const isAuthorized = authorizeEntityForPermission("read", payload.document, state.authorization[payload.collection]);
 
-        patch.types[payload.collection] = {
-          [payload.document._id]: {
-            action,
-            data: payload.document,
-          },
-        };
+        if (isAuthorized) {
+          const patch = createBatchOperationRecord();
 
-        send("patch", patch);
+          patch.types[payload.collection] = {
+            [payload.document._id]: {
+              action,
+              data: payload.document,
+            },
+          };
+
+          send("patch", patch);
+        }
       });
 
-      ws.on("message", (data) => {
+      ws.on("message", async (data, req) => {
         const json = JSON.parse(data.toString());
 
         console.log("MESSAGE", json);
@@ -80,7 +98,10 @@ export class ServerSocketModule {
   }
 }
 
-type ServerSocketModuleOptions = {
+type ServerSocketModuleOptions<T extends EsormSchemaDefinition, XSession> = {
   db: Db;
+  api: EsormServerApi<T>;
   watcher: ServerWatcherModule;
+
+  esormOptions: EsormOptions<T, XSession>;
 };

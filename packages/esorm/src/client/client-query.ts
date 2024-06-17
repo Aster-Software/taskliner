@@ -1,9 +1,9 @@
 import { makeAutoObservable, runInAction, toJS, untracked } from "mobx";
-import { EsormQuery, EsormQueryBuilder, checkEntityPassesQuery } from "../query";
-import { deterministicStringify } from "../utils";
+import { EsormQuery, EsormQueryBuilder, checkEntityPassesQuery } from "../common/query";
+import { deterministicStringify } from "../common/utils";
 import { BaseSchema } from "./client-utils";
 import { ClientApiDriver } from "./client-api-driver";
-import { EsormBatchOperation } from "../batch";
+import { EsormBatchOperation } from "../common/batch";
 
 export class ClientQueryModule<Schema extends BaseSchema> {
   entities = new Map<string, any>();

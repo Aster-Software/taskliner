@@ -1,5 +1,3 @@
-import { esorm, test } from "./esormdb.js";
-
-test();
+import { esorm } from "./esormdb.js";
 
 esorm.start();

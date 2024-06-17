@@ -1,18 +1,35 @@
 import { Container, Divider, Grid, HStack } from "@style/jsx";
 import type { EsormType } from "~/../../api/src/esormdb";
-import { EsormClient } from "esorm/dist/client";
+import { EsormClient } from "esorm/client";
 import { Button } from "../components/Button";
 import { Panel } from "../components/Panel";
-import { For, Match, Switch, createEffect } from "solid-js";
+import { For, Match, Switch } from "solid-js";
 import { makeAutoObservable } from "mobx";
 import { TextInput } from "../components/TextInput";
 import { createId } from "@paralleldrive/cuid2";
+import { createClerkProvider } from "../utilities/clerk";
 
 export const HomePage = () => {
   return (
     <Container maxWidth="1000px" display="grid" gap={4} py={6}>
-      <TestPanel />
-      <TestPanel />
+      <Switch>
+        <Match when={clerk.state.isLoading}>Loading Auth...</Match>
+        <Match when={clerk.state.isError}>Auth Error</Match>
+        <Match when>
+          <Panel>
+            <div>User ID: {clerk.client.user?.id}</div>
+            <div>User Full Name: {clerk.client.user?.fullName}</div>
+            <div>User Emails: {clerk.client.user?.emailAddresses.toString()}</div>
+            <HStack>
+              <Button onClick={() => clerk.client.openSignIn({ forceRedirectUrl: "/app" })}>Log In</Button>
+              <Button onClick={() => clerk.client.openSignUp({ forceRedirectUrl: "/app" })}>Sign Up</Button>
+              <Button onClick={() => clerk.client.signOut({ redirectUrl: "/app" })}>Log Out</Button>
+            </HStack>
+          </Panel>
+          <TestPanel />
+          <TestPanel />
+        </Match>
+      </Switch>
     </Container>
   );
 };
@@ -74,4 +91,5 @@ const TestPanel = () => {
   );
 };
 
-const esorm = EsormClient<EsormType>();
+const clerk = createClerkProvider();
+const esorm = EsormClient<EsormType>({});

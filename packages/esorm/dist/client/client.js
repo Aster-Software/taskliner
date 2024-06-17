@@ -1,11 +1,11 @@
-// src/client.ts
+// src/client/client.ts
 import { makeAutoObservable as makeAutoObservable4, observe as observe2, runInAction as runInAction3 } from "mobx";
 import { createEffect, onCleanup } from "solid-js";
 
 // src/client/client-query.ts
 import { makeAutoObservable, runInAction, untracked } from "mobx";
 
-// src/query.ts
+// src/common/query.ts
 var EsormQueryBuilder = {
   where: (column, operator, value) => {
     const condition = {
@@ -32,7 +32,7 @@ var checkEntityPassesQuery = (query, entity) => {
   return false;
 };
 
-// src/utils.ts
+// src/common/utils.ts
 var deterministicStringify = (input) => {
   const deterministicReplacer = (_, v) => typeof v !== "object" || v === null || Array.isArray(v) ? v : Object.fromEntries(Object.entries(v).sort(([ka], [kb]) => ka < kb ? -1 : ka > kb ? 1 : 0));
   return JSON.stringify(input, deterministicReplacer);
@@ -213,7 +213,7 @@ var ClientSocketModule = class {
 // src/client/client-operations.ts
 import { makeAutoObservable as makeAutoObservable3, runInAction as runInAction2 } from "mobx";
 
-// src/batch.ts
+// src/common/batch.ts
 import merge from "merge";
 var createBatchOperationRecord = () => {
   const operation = {
@@ -258,7 +258,9 @@ var ClientOperationsModule = class {
 
 // src/client/client-api-driver.ts
 var ClientApiDriver = class {
-  constructor() {
+  options;
+  constructor(options) {
+    this.options = options;
   }
   req = async (options) => {
     const response = await fetch(options.url, {
@@ -280,9 +282,9 @@ var set = (target, key, setter) => {
   target[key] = setter(t);
 };
 
-// src/client.ts
-var EsormClient = () => {
-  const apiDriver = new ClientApiDriver();
+// src/client/client.ts
+var EsormClient = (clientOptions) => {
+  const apiDriver = new ClientApiDriver({ clientOptions });
   const operationsModule = new ClientOperationsModule({ apiDriver });
   const queryModule = new ClientQueryModule({ apiDriver });
   const socketModule = new ClientSocketModule({

@@ -5,6 +5,11 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client/client.js",
+    "./server": "./dist/server/server.js"
+  },
   "bin": {
     "test": "dist/cli.js"
   },
@@ -33,7 +38,8 @@
     "entry": [
       "src/index.ts",
       "src/cli.ts",
-      "src/client.ts"
+      "src/client/client.ts",
+      "src/server/server.ts"
     ],
     "splitting": false,
     "sourcemap": true,
